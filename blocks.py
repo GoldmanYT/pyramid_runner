@@ -22,3 +22,7 @@ class Block:
 
 class Ladder:
     pass
+
+
+class Rope:
+    pass

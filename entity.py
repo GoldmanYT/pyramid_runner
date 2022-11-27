@@ -1,4 +1,4 @@
-from blocks import Block, Ladder
+from blocks import Block, Ladder, Rope
 
 
 class Entity:
@@ -35,8 +35,10 @@ class Entity:
     def is_standing(self):
         under = self.under()
         inside = self.inside()
+        x, y = self.pos()
         if isinstance(under, Block) and under.has_collision or \
-           isinstance(under, Ladder) or isinstance(inside, Ladder):
+           isinstance(under, Ladder) or isinstance(inside, Ladder) or \
+           isinstance(self.field[y][x], Rope) and not self.step_y:
             return True
 
         return False
