@@ -1,5 +1,4 @@
-from block import Block
-from ladder import Ladder
+from blocks import Block, Ladder
 
 
 class Entity:
@@ -22,8 +21,8 @@ class Entity:
         if self.field is not None:
             x = self.x + (self.step_x + self.n_steps // 2) // self.n_steps
             y = self.y + bool(self.step_y) - 1
-
             return self.field[y][x]
+
         return Block()
 
     def inside(self):
@@ -33,8 +32,23 @@ class Entity:
 
         return None
 
+    def is_standing(self):
+        under = self.under()
+        inside = self.inside()
+        if isinstance(under, Block) and under.has_collision or \
+           isinstance(under, Ladder) or isinstance(inside, Ladder):
+            return True
+
+        return False
+
     def update(self, direction=None):
-        pass
+        if not self.is_standing():
+            self.move('down')
+        elif direction is not None:
+            if not (isinstance(self.inside(), Ladder) or isinstance(self.under(), Ladder)) \
+                    and direction == 'up':
+                return
+            self.move(direction)
 
     def move_to(self, x, y):
         step_x = self.x * self.n_steps + self.step_x

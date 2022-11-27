@@ -1,5 +1,4 @@
-from block import Block
-from ladder import Ladder
+from blocks import Block, Ladder
 
 
 class Field:

@@ -18,3 +18,7 @@ class Block:
         if self.time >= self.recovery_time:
             self.time = 0
             self.has_collision = True
+
+
+class Ladder:
+    pass

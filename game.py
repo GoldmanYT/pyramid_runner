@@ -1,7 +1,6 @@
 import pygame as pg
 
-from block import Block
-from ladder import Ladder
+from blocks import Block, Ladder
 from player import Player
 from field import Field
 from enemy import Enemy
@@ -19,7 +18,7 @@ class Game:
         self.field = Field(7, 7)
         self.field[1][1] = Ladder()
         self.field[2][1] = Ladder()
-        # self.field[3][1] = Ladder()
+        self.field[3][3] = Ladder()
         self.field[2][2] = Block(1)
         self.field[2][3] = Block(1)
         self.field[2][4] = Block(1)
@@ -47,15 +46,15 @@ class Game:
         elif keys[pg.K_x]:
             self.player.dig('right')
         if keys[pg.K_LEFT] and not keys[pg.K_RIGHT]:
-            self.player.move('left')
+            self.player.update('left')
         elif keys[pg.K_RIGHT] and not keys[pg.K_LEFT]:
-            self.player.move('right')
+            self.player.update('right')
         elif keys[pg.K_UP] and not keys[pg.K_DOWN]:
-            self.player.move('down')  # поменять местами
+            self.player.update('down')  # поменять местами
         elif keys[pg.K_DOWN] and not keys[pg.K_UP]:
-            self.player.move('up')  # поменять местами
+            self.player.update('up')  # поменять местами
         else:
-            self.player.move('fall')
+            self.player.update()
 
     def draw(self):
         self.screen.fill((0, 0, 0))

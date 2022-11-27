@@ -1,6 +1,5 @@
 from entity import Entity
-from block import Block
-from ladder import Ladder
+from blocks import Block, Ladder
 
 
 class Player(Entity):
@@ -21,13 +20,14 @@ class Player(Entity):
         k = {'left': -1, 'right': 1}
         x, y = self.pos()
         pos = self.field[y - 1][x + k.get(direction)]
+        above_pos = self.field[y][x + k.get(direction)]
 
-        if isinstance(pos, Block) and pos.diggable and pos.has_collision:
+        if isinstance(pos, Block) and pos.diggable and pos.has_collision and above_pos is None:
             pos.dig()
             self.dug_blocks.append(pos)
 
-    def move(self, direction):
-        super().move(direction)
+    def update(self, direction=None):
+        super().update(direction)
         recovered_blocks = []
         for i, block in enumerate(self.dug_blocks):
             block.tick()
