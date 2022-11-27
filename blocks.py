@@ -1,5 +1,11 @@
-class Block:
-    def __init__(self, diggable=False, has_collision=True, recovery_time=210):
+class TexturedBlock:
+    def __init__(self, texture=None):
+        self.texture = texture
+
+
+class Block(TexturedBlock):
+    def __init__(self, texture=None, diggable=False, has_collision=True, recovery_time=210):
+        super().__init__(texture)
         if not diggable and not has_collision:
             raise ValueError('Неразрушаемый блок должен иметь коллизию')
 
@@ -20,9 +26,17 @@ class Block:
             self.has_collision = True
 
 
-class Ladder:
+class Ladder(TexturedBlock):
     pass
 
 
-class Rope:
+class Rope(TexturedBlock):
+    pass
+
+
+class Gold(TexturedBlock):
+    pass
+
+
+class Decoration(TexturedBlock):
     pass

@@ -1,6 +1,6 @@
 import pygame as pg
 
-from blocks import Block, Ladder, Rope
+from blocks import Block, Ladder, Rope, Gold
 from player import Player
 from field import Field
 from enemy import Enemy
@@ -24,9 +24,13 @@ class Game:
         self.field[5][1] = Ladder()
         self.field[5][2] = Rope()
         self.field[5][3] = Rope()
-        self.field[2][2] = Block(1)
-        self.field[2][3] = Block(1)
-        self.field[2][4] = Block(1)
+        self.field[2][2] = Block(diggable=True)
+        self.field[2][3] = Block(diggable=True)
+        self.field[2][4] = Block(diggable=True)
+        self.field[4][2] = Gold()
+        self.field[3][2] = Gold()
+        self.field[4][3] = Gold()
+        self.field[3][3] = Gold()
         self.player = Player(2, 1, field=self.field)
         self.a = 64
 
@@ -96,6 +100,8 @@ class Game:
                     pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, y * self.a + 3 * self.a // 4), (x * self.a + 7 * self.a // 8, y * self.a + 3 * self.a // 4))
                 elif isinstance(self.field[y][x], Rope):
                     pg.draw.line(self.screen, 'white', (x * self.a, y * self.a + self.a * 7 // 8), ((x + 1) * self.a, y * self.a + self.a * 7 // 8))
+                elif isinstance(self.field[y][x], Gold):
+                    pg.draw.rect(self.screen, 'yellow', (x * self.a + self.a // 4, y * self.a + self.a // 4, self.a // 2, self.a // 2), 1)
 
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
         pg.draw.ellipse(self.screen, 'red', (x * self.a + step_x * self.a // self.player.n_steps, y * self.a + step_y * self.a // self.player.n_steps, self.a, self.a), 1)
