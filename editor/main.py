@@ -1,12 +1,13 @@
 import pygame as pg
 from blocks import Block, Ladder, Rope, Gold, Decoration
+from inspect import getfullargspec
 
 
 def draw(item, x, y, t=True):
-    global a
+    global a, cam_x, cam_y
     if item is not None and item.texture is not None:
         sprite = pg.image.load(item.texture)
-        screen.blit(sprite, sprite.get_rect(x=x * a - (2 if t else 0), y=y * a - (14 if t else 0)))
+        screen.blit(sprite, sprite.get_rect(x=x * a - (cam_x + 2 if t else 0), y=y * a - (cam_y + 14 if t else 0)))
     elif isinstance(item, Block):
         if item.diggable:
             pass
@@ -23,7 +24,7 @@ def draw(item, x, y, t=True):
 
 
 def on_field(x, y):
-    return 0 <= x <= w - 1 and 0 <= y <= h - 1
+    return w - 2 >= x >= 1 <= y <= h - 2
 
 
 def place(item, x, y):
@@ -36,7 +37,7 @@ def delete(x, y):
 
 # w = int(input('w: '))
 # h = int(input('h: '))
-w, h = 20, 20
+w, h = 8, 8
 a = 50
 
 pg.init()
@@ -53,6 +54,7 @@ selected_item = 0
 cam_x, cam_y = 0, 0
 delete_mode = False
 place_mode = False
+move_mode = False
 
 while run:
     screen.fill((0, 0, 0))
@@ -60,18 +62,18 @@ while run:
         if event.type == pg.QUIT:
             run = False
         elif event.type == pg.MOUSEBUTTONDOWN:
+            mouse_x, mouse_y = event.pos
+            x, y = (mouse_x + cam_x) // a, h - (mouse_y + cam_y) // a - 1
             if event.button == 1:
                 place_mode = True
-                mouse_x, mouse_y = event.pos
-                x, y = mouse_x // a, mouse_y // a
-                if on_field(x + cam_x, y + cam_y):
-                    place(items[selected_item], x + cam_x, y + cam_y)
+                if on_field(x, y):
+                    place(items[selected_item], x, y)
+            elif event.button == 2:
+                move_mode = True
             elif event.button == 3:
                 delete_mode = True
-                mouse_x, mouse_y = event.pos
-                x, y = mouse_x // a, mouse_y // a
-                if on_field(x + cam_x, y + cam_y):
-                    delete(x + cam_x, y + cam_y)
+                if on_field(x, y):
+                    delete(x, y)
             elif event.button == 4:
                 selected_item += 1
                 selected_item %= len(items)
@@ -81,29 +83,46 @@ while run:
         elif event.type == pg.MOUSEBUTTONUP:
             if event.button == 1:
                 place_mode = False
+            elif event.button == 2:
+                move_mode = False
             elif event.button == 3:
                 delete_mode = False
         elif event.type == pg.MOUSEMOTION:
             mouse_x, mouse_y = event.pos
-            x, y = mouse_x // a, mouse_y // a
-            if on_field(x + cam_x, y + cam_y):
+            x, y = (mouse_x + cam_x) // a, h - (mouse_y + cam_y) // a - 1
+            if on_field(x, y):
                 if delete_mode:
-                    delete(x + cam_x, y + cam_y)
+                    delete(x, y)
                 elif place_mode:
-                    place(items[selected_item], x + cam_x, y + cam_y)
-        elif event.type == pg.KEYDOWN:
-            if event.key == pg.K_w:
-                cam_y -= 1
-            elif event.key == pg.K_s:
-                cam_y += 1
-            elif event.key == pg.K_a:
-                cam_x -= 1
-            elif event.key == pg.K_d:
-                cam_x += 1
+                    place(items[selected_item], x, y)
+            if move_mode:
+                x, y = event.rel
+                cam_x -= x
+                cam_y -= y
 
     for y in range(h - 1, -1, -1):
         for x in range(w):
-            draw(field[y][x], x - cam_x, y - cam_y)
+            draw(field[h - y - 1][x], x, y)
     screen.fill((0, 0, 0), (0, 0, 64, 64))
     draw(items[selected_item], 0, 0, False)
     pg.display.flip()
+pg.quit()
+
+file_name = input('Введите имя файла: ')
+if file_name:
+    with open('C:/Users/DEXP/PycharmProjects/pyramid_runner/' + file_name, 'w') as f:
+        f.write(f'self.w, self.h = {w}, {h}' + '\n')
+        for x in range(w):
+            for y in range(h):
+                pos = field[y][x]
+                args_spec = getfullargspec(pos.__init__)
+                args = args_spec.args[1:]
+                defaults = args_spec.defaults
+                if pos is not None:
+                    f.write(f'self.field[{y}][{x}] = {pos.__class__.__name__}(' +
+                            ', '.join(f'''{arg}={"'" if type(eval(f"field[y][x].{arg}")) == str else ""}'''
+                                      f'''{eval(f"field[y][x].{arg}")}'''
+                                      f'''{"'" if type(eval(f"field[y][x].{arg}")) == str else ""}'''
+                                      for i, arg in enumerate(args)
+                                      if defaults[i] != eval(f"field[y][x].{arg}")) +
+                            ')\n')

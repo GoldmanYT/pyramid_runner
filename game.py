@@ -15,23 +15,8 @@ class Game:
 
         self.screen = pg.display.set_mode((w, h))
         run = True
-        self.field = Field(9, 9)
-        self.field[1][1] = Ladder()
-        self.field[2][1] = Ladder()
-        self.field[3][3] = Ladder()
-        self.field[3][1] = Ladder()
-        self.field[4][1] = Ladder()
-        self.field[5][1] = Ladder()
-        self.field[5][2] = Rope()
-        self.field[5][3] = Rope()
-        self.field[2][2] = Block(diggable=True)
-        self.field[2][3] = Block(diggable=True)
-        self.field[2][4] = Block(diggable=True)
-        self.field[4][2] = Gold()
-        self.field[3][2] = Gold()
-        self.field[4][3] = Gold()
-        self.field[3][3] = Gold()
-        self.player = Player(2, 1, field=self.field)
+        self.field = Field(8, 8, file_name='level0.txt')
+        self.player = Player(2, 2, field=self.field)
         self.a = 64
 
         clock = pg.time.Clock()
