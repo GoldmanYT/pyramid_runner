@@ -64,14 +64,14 @@ while run:
                 place_mode = True
                 mouse_x, mouse_y = event.pos
                 x, y = mouse_x // a, mouse_y // a
-                if on_field(x, y):
-                    place(items[selected_item], x, y)
+                if on_field(x + cam_x, y + cam_y):
+                    place(items[selected_item], x + cam_x, y + cam_y)
             elif event.button == 3:
                 delete_mode = True
                 mouse_x, mouse_y = event.pos
                 x, y = mouse_x // a, mouse_y // a
-                if on_field(x, y):
-                    delete(x, y)
+                if on_field(x + cam_x, y + cam_y):
+                    delete(x + cam_x, y + cam_y)
             elif event.button == 4:
                 selected_item += 1
                 selected_item %= len(items)
@@ -86,11 +86,11 @@ while run:
         elif event.type == pg.MOUSEMOTION:
             mouse_x, mouse_y = event.pos
             x, y = mouse_x // a, mouse_y // a
-            if on_field(x, y):
+            if on_field(x + cam_x, y + cam_y):
                 if delete_mode:
-                    delete(x, y)
+                    delete(x + cam_x, y + cam_y)
                 elif place_mode:
-                    place(items[selected_item], x, y)
+                    place(items[selected_item], x + cam_x, y + cam_y)
         elif event.type == pg.KEYDOWN:
             if event.key == pg.K_w:
                 cam_y -= 1
