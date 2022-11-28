@@ -5,11 +5,12 @@ class Entity:
     def __init__(self, x, y, speed=5500, n_steps=203500, field=None):
         if speed > n_steps:
             raise ValueError('Скорость не может быть больше количества шагов')
+        if n_steps % speed != 0:
+            raise ValueError('Количество шагов должно быть кратно скорости')
         self.x, self.y = x, y
         self.ver_speed = speed
         self.hor_speed = 23 * speed // 22
         self.center_speed = 27 * speed // 22
-        self.block_dig_speed = 5 * speed // 2
         self.step_x, self.step_y, self.n_steps = 0, 0, n_steps
         self.field = field
 
@@ -47,7 +48,7 @@ class Entity:
         if not self.is_standing():
             self.move('down')
         elif direction is not None:
-            if not (isinstance(self.inside(), Ladder) or isinstance(self.under(), Ladder)) \
+            if not (isinstance(self.inside(), Ladder) or isinstance(self.under(), Ladder) and self.step_y) \
                     and direction == 'up':
                 return
             self.move(direction)

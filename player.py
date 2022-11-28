@@ -3,9 +3,10 @@ from blocks import Block, Ladder, Gold, Decoration
 
 
 class Player(Entity):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, x, y, speed=5500, n_steps=203500, field=None):
+        super().__init__(x, y, speed=speed, n_steps=n_steps, field=field)
         self.dug_blocks = []
+        self.block_dig_speed = 5 * speed // 2
 
     def dig(self, direction):
         directions = ['left', 'right']
