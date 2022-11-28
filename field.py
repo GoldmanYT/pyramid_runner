@@ -1,4 +1,4 @@
-from blocks import Block, Ladder
+from blocks import Block, Ladder, Rope, Gold, Decoration
 
 
 class Field:
@@ -7,7 +7,8 @@ class Field:
             raise ValueError('Слишком маленькое поле')
 
         if file is not None:
-            pass
+            with open(file) as f:
+                exec(f.read())
         self.w, self.h = w, h
         self.field = [[Block()
                        if 0 in (x, y) or x == w - 1 or y == h - 1 else

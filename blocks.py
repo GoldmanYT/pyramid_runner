@@ -4,7 +4,7 @@ class TexturedBlock:
 
 
 class Block(TexturedBlock):
-    def __init__(self, texture=None, diggable=False, has_collision=True, recovery_time=210):
+    def __init__(self, texture=None, diggable=False, has_collision=True, recovery_time=1084):
         super().__init__(texture)
         if not diggable and not has_collision:
             raise ValueError('Неразрушаемый блок должен иметь коллизию')

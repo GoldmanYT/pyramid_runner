@@ -58,9 +58,9 @@ class Game:
             self.player.dig('right')
         if isinstance(inside, Ladder) or isinstance(under, Ladder):
             if keys[pg.K_UP] and not keys[pg.K_DOWN]:
-                self.player.update('down')  # поменять местами
+                self.player.update('up')
             elif keys[pg.K_DOWN] and not keys[pg.K_UP]:
-                self.player.update('up')  # поменять местами
+                self.player.update('down')
             elif keys[pg.K_LEFT] and not keys[pg.K_RIGHT]:
                 self.player.update('left')
             elif keys[pg.K_RIGHT] and not keys[pg.K_LEFT]:
@@ -73,9 +73,9 @@ class Game:
             elif keys[pg.K_RIGHT] and not keys[pg.K_LEFT]:
                 self.player.update('right')
             elif keys[pg.K_UP] and not keys[pg.K_DOWN]:
-                self.player.update('down')  # поменять местами
+                self.player.update('up')
             elif keys[pg.K_DOWN] and not keys[pg.K_UP]:
-                self.player.update('up')  # поменять местами
+                self.player.update('down')
             else:
                 self.player.update()
 
@@ -87,21 +87,21 @@ class Game:
                 if isinstance(self.field[y][x], Block):
                     if self.field[y][x].diggable:
                         if self.field[y][x].has_collision:
-                            pg.draw.rect(self.screen, 'green', (x * self.a, y * self.a, self.a, self.a), 1)
+                            pg.draw.rect(self.screen, 'green', (x * self.a, self.h - self.a - y * self.a, self.a, self.a), 1)
                         else:
-                            pg.draw.rect(self.screen, 'yellow', (x * self.a, y * self.a, self.a, self.a), 1)
+                            pg.draw.rect(self.screen, 'yellow', (x * self.a, self.h - self.a - y * self.a, self.a, self.a), 1)
                     else:
-                        pg.draw.rect(self.screen, 'white', (x * self.a, y * self.a, self.a, self.a), 1)
+                        pg.draw.rect(self.screen, 'white', (x * self.a, self.h - self.a - y * self.a, self.a, self.a), 1)
                 elif isinstance(self.field[y][x], Ladder):
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, y * self.a), (x * self.a + self.a // 8, (y + 1) * self.a))
-                    pg.draw.line(self.screen, 'white', (x * self.a + 7 * self.a // 8, y * self.a), (x * self.a + 7 * self.a // 8, (y + 1) * self.a))
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, y * self.a + self.a // 4), (x * self.a + 7 * self.a // 8, y * self.a + self.a // 4))
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, y * self.a + 2 * self.a // 4), (x * self.a + 7 * self.a // 8, y * self.a + 2 * self.a // 4))
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, y * self.a + 3 * self.a // 4), (x * self.a + 7 * self.a // 8, y * self.a + 3 * self.a // 4))
+                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a), (x * self.a + self.a // 8, self.h - (y + 1) * self.a))
+                    pg.draw.line(self.screen, 'white', (x * self.a + 7 * self.a // 8, self.h - y * self.a), (x * self.a + 7 * self.a // 8, self.h - (y + 1) * self.a))
+                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a - self.a // 4), (x * self.a + 7 * self.a // 8, self.h - y * self.a - self.a // 4))
+                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a - 2 * self.a // 4), (x * self.a + 7 * self.a // 8, self.h - y * self.a - 2 * self.a // 4))
+                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a - 3 * self.a // 4), (x * self.a + 7 * self.a // 8, self.h - y * self.a - 3 * self.a // 4))
                 elif isinstance(self.field[y][x], Rope):
-                    pg.draw.line(self.screen, 'white', (x * self.a, y * self.a + self.a * 7 // 8), ((x + 1) * self.a, y * self.a + self.a * 7 // 8))
+                    pg.draw.line(self.screen, 'white', (x * self.a, self.h - self.a - y * self.a + self.a // 8), ((x + 1) * self.a, self.h - self.a - y * self.a + self.a // 8))
                 elif isinstance(self.field[y][x], Gold):
-                    pg.draw.rect(self.screen, 'yellow', (x * self.a + self.a // 4, y * self.a + self.a // 4, self.a // 2, self.a // 2), 1)
+                    pg.draw.rect(self.screen, 'yellow', (x * self.a + self.a // 4, self.h - self.a - y * self.a + self.a // 4, self.a // 2, self.a // 2), 1)
 
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
-        pg.draw.ellipse(self.screen, 'red', (x * self.a + step_x * self.a // self.player.n_steps, y * self.a + step_y * self.a // self.player.n_steps, self.a, self.a), 1)
+        pg.draw.ellipse(self.screen, 'red', (x * self.a + step_x * self.a // self.player.n_steps, self.h - self.a - y * self.a - step_y * self.a // self.player.n_steps, self.a, self.a), 1)

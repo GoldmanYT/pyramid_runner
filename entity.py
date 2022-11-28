@@ -53,32 +53,53 @@ class Entity:
                 return
             self.move(direction)
 
-    def move_to(self, x, y):
-        step_x = self.x * self.n_steps + self.step_x
-        step_y = self.y * self.n_steps + self.step_y
+    def move_to_center(self):
+        if self.step_x < self.n_steps - self.step_x:
+            step_x = self.step_x
+        else:
+            step_x = self.step_x - self.n_steps
+        if self.step_y < self.n_steps - self.step_y:
+            step_y = self.step_y
+        else:
+            step_y = self.step_y - self.n_steps
 
-    def move(self, direction):
-        directions = ['left', 'right', 'up', 'down', 'fall']
+        hor_speed = min(abs(step_x), self.center_speed)
+        ver_speed = min(abs(step_y), self.center_speed)
+
+        directions = ['right', 'left']
+        direction = directions[step_x > 0]
+        self.move(direction, hor_speed, 0)
+
+        directions = ['up', 'down']
+        direction = directions[step_y > 0]
+        self.move(direction, 0, ver_speed)
+
+    def move(self, direction, hor_speed=None, ver_speed=None):
+        if hor_speed is None:
+            hor_speed = self.hor_speed
+        if ver_speed is None:
+            ver_speed = self.ver_speed
+        directions = ['left', 'right', 'up', 'down']
         if direction not in directions:
             raise ValueError('Нет такого направления')
 
         k = {'left': -1, 'right': 1, 'up': 1, 'down': -1}
         dx, dy = 0, 0
         if direction in ('left', 'right'):
-            self.step_x += self.hor_speed * k.get(direction)
+            self.step_x += hor_speed * k.get(direction)
             self.x += self.step_x // self.n_steps
             self.step_x %= self.n_steps
             dy = ((self.step_y + self.n_steps // 2) // self.n_steps * 2 - 1) * \
-                min(self.ver_speed, self.n_steps - self.step_y, self.step_y)
+                min(ver_speed, self.n_steps - self.step_y, self.step_y)
             self.step_y += dy
             self.y += self.step_y // self.n_steps
             self.step_y %= self.n_steps
         elif direction in ('up', 'down'):
-            self.step_y += self.ver_speed * k.get(direction)
+            self.step_y += ver_speed * k.get(direction)
             self.y += self.step_y // self.n_steps
             self.step_y %= self.n_steps
             dx = ((self.step_x + self.n_steps // 2) // self.n_steps * 2 - 1) * \
-                min(self.hor_speed, self.n_steps - self.step_x, self.step_x)
+                min(hor_speed, self.n_steps - self.step_x, self.step_x)
             self.step_x += dx
             self.x += self.step_x // self.n_steps
             self.step_x %= self.n_steps
