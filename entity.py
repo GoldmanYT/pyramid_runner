@@ -1,18 +1,57 @@
+import pygame as pg
 from blocks import Block, Ladder, Rope
 
 
+A = 64
+
+
 class Entity:
-    def __init__(self, x, y, speed=5500, n_steps=203500, field=None):
+    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, texture=None):
         if speed > n_steps:
             raise ValueError('Скорость не может быть больше количества шагов')
         if n_steps % speed != 0:
             raise ValueError('Количество шагов должно быть кратно скорости')
+        self.texture = texture
+        if texture is not None:
+            self.image = pg.image.load(texture).convert_alpha()
         self.x, self.y = x, y
         self.ver_speed = speed
         self.hor_speed = 23 * speed // 22
         self.center_speed = 27 * speed // 22
         self.step_x, self.step_y, self.n_steps = 0, 0, n_steps
         self.field = field
+        self.stop_time = 0
+        self.sprite_direction = 'l'
+        self.anims = {
+            'standing_l': 0,
+            'standing_r': 1,
+            'going_l': 2,
+            'going_r': 3,
+            'roping_l': 4,
+            'roping_r': 5,
+            'laddering_l': 6,
+            'laddering_r': 7,
+            'falling_l': 8,
+            'falling_r': 9,
+            'digging_l': 10,
+            'digging_r': 11
+        }
+
+    def check_state(self, direction):
+        if direction in ('left', 'right'):
+            self.sprite_direction = direction[0]
+        if not self.is_standing():
+            return f'falling_{self.sprite_direction}'
+        inside = self.inside()
+        if isinstance(inside, Rope):
+            return f'roping_{self.sprite_direction}'
+        if isinstance(inside, Ladder) and direction in ('up', 'down'):
+            return f'laddering_{self.sprite_direction}'
+        if self.stop_time:
+            return f'digging_{self.sprite_direction}'
+        if direction is not None:
+            return f'going_{self.sprite_direction}'
+        return f'standing_{self.sprite_direction}'
 
     def pos(self):
         return (self.x + (self.step_x + self.n_steps // 2) // self.n_steps,
@@ -23,14 +62,12 @@ class Entity:
             x = self.x + (self.step_x + self.n_steps // 2) // self.n_steps
             y = self.y + bool(self.step_y) - 1
             return self.field[y][x]
-
         return Block()
 
     def inside(self):
         if self.field is not None:
             x, y = self.pos()
             return self.field[y][x]
-
         return None
 
     def is_standing(self):
@@ -38,20 +75,28 @@ class Entity:
         inside = self.inside()
         x, y = self.pos()
         if isinstance(under, Block) and under.has_collision or \
-           isinstance(under, Ladder) or isinstance(inside, Ladder) or \
-           isinstance(self.field[y][x], Rope) and not self.step_y:
+                isinstance(under, Ladder) or isinstance(inside, Ladder) or \
+                isinstance(self.field[y][x], Rope) and not self.step_y:
             return True
-
         return False
+
+    def draw(self, surface, x, y):
+        if self.texture is not None:
+            crop_index = self.anims.get(self.check_state(self.sprite_direction))
+            surface.blit(self.image, (x, y), (0, crop_index * A, A, A))
 
     def update(self, direction=None):
         if not self.is_standing():
             self.move('down')
+            self.check_state('down')
         elif direction is not None:
             if not (isinstance(self.inside(), Ladder) or isinstance(self.under(), Ladder) and self.step_y) \
                     and direction == 'up':
+                self.check_state(None)
                 return
             self.move(direction)
+            self.check_state(direction)
+        self.check_state(None)
 
     def move_to_center(self):
         if self.step_x < self.n_steps - self.step_x:

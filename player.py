@@ -1,13 +1,12 @@
 from entity import Entity
-from blocks import Block, Ladder, Gold, Decoration
+from blocks import Block, Ladder, Rope, Gold
 
 
 class Player(Entity):
-    def __init__(self, x, y, speed=5500, n_steps=203500, field=None):
-        super().__init__(x, y, speed=speed, n_steps=n_steps, field=field)
+    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, texture=None):
+        super().__init__(x, y, speed=speed, n_steps=n_steps, field=field, texture=texture)
         self.dug_blocks = []
         self.freeze_frames = 67
-        self.stop_time = 0
 
     def dig(self, direction):
         directions = ['left', 'right']
@@ -22,7 +21,8 @@ class Player(Entity):
         pos = self.field[y - 1][x + k.get(direction)]
         above_pos = self.field[y][x + k.get(direction)]
 
-        if isinstance(pos, Block) and pos.diggable and pos.has_collision and above_pos is None:
+        if isinstance(pos, Block) and pos.diggable and pos.has_collision and \
+                (above_pos is None or isinstance(above_pos, Block) and not above_pos.has_collision):
             pos.dig()
             self.dug_blocks.append(pos)
             self.stop_time = self.freeze_frames

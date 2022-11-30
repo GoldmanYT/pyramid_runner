@@ -15,9 +15,9 @@ class Game:
 
         self.screen = pg.display.set_mode((w, h))
         run = True
-        self.field = Field(8, 8, file_name='level0.txt')
-        self.player = Player(2, 2, field=self.field)
-        self.a = 64
+        self.field = Field(file_name='levels/level0.txt')
+        self.player = Player(2, 2, field=self.field, texture='data/player.png')
+        self.a = 50
 
         clock = pg.time.Clock()
 
@@ -69,24 +69,11 @@ class Game:
 
         for y in range(self.field.h):
             for x in range(self.field.w):
-                if isinstance(self.field[y][x], Block):
-                    if self.field[y][x].diggable:
-                        if self.field[y][x].has_collision:
-                            pg.draw.rect(self.screen, 'green', (x * self.a, self.h - self.a - y * self.a, self.a, self.a), 1)
-                        else:
-                            pg.draw.rect(self.screen, 'yellow', (x * self.a, self.h - self.a - y * self.a, self.a, self.a), 1)
-                    else:
-                        pg.draw.rect(self.screen, 'white', (x * self.a, self.h - self.a - y * self.a, self.a, self.a), 1)
-                elif isinstance(self.field[y][x], Ladder):
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a), (x * self.a + self.a // 8, self.h - (y + 1) * self.a))
-                    pg.draw.line(self.screen, 'white', (x * self.a + 7 * self.a // 8, self.h - y * self.a), (x * self.a + 7 * self.a // 8, self.h - (y + 1) * self.a))
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a - self.a // 4), (x * self.a + 7 * self.a // 8, self.h - y * self.a - self.a // 4))
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a - 2 * self.a // 4), (x * self.a + 7 * self.a // 8, self.h - y * self.a - 2 * self.a // 4))
-                    pg.draw.line(self.screen, 'white', (x * self.a + self.a // 8, self.h - y * self.a - 3 * self.a // 4), (x * self.a + 7 * self.a // 8, self.h - y * self.a - 3 * self.a // 4))
-                elif isinstance(self.field[y][x], Rope):
-                    pg.draw.line(self.screen, 'white', (x * self.a, self.h - self.a - y * self.a + self.a // 8), ((x + 1) * self.a, self.h - self.a - y * self.a + self.a // 8))
-                elif isinstance(self.field[y][x], Gold):
-                    pg.draw.rect(self.screen, 'yellow', (x * self.a + self.a // 4, self.h - self.a - y * self.a + self.a // 4, self.a // 2, self.a // 2), 1)
-
+                if self.field[y][x] is not None and self.field[y][x].texture is not None:
+                    self.field[y][x].draw(self.screen, x * self.a, (self.field.h - y - 1) * self.a)
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
-        pg.draw.ellipse(self.screen, 'red', (x * self.a + step_x * self.a // self.player.n_steps, self.h - self.a - y * self.a - step_y * self.a // self.player.n_steps, self.a, self.a), 1)
+        self.player.draw(
+            self.screen,
+            x * self.a + step_x * self.a // self.player.n_steps,
+            (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps
+        )
