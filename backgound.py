@@ -1,7 +1,7 @@
 import pygame as pg
 
 
-W = 768
+H = 768
 
 
 class Background:
@@ -9,8 +9,8 @@ class Background:
         self.texture = texture
         self.crop_index = crop_index
         if self.texture is not None:
-            self.image = pg.image.load(self.texture).convert_alpha()
+            self.image = pg.image.load(self.texture).convert()
 
     def draw(self, surface, x, y):
         if self.texture is not None:
-            surface.blit(self.image, (x, y), (0, self.crop_index * W, 1024, W))
+            surface.blit(self.image, (x, y), (0, self.crop_index * H, 1024, H))

@@ -1,5 +1,5 @@
 from entity import Entity
-from blocks import Block, Ladder, Rope, Gold
+from blocks import Block, Gold, Entrance, Exit, Spawner
 
 
 class Player(Entity):
@@ -22,10 +22,13 @@ class Player(Entity):
         above_pos = self.field[y][x + k.get(direction)]
 
         if isinstance(pos, Block) and pos.diggable and pos.has_collision and \
-                (above_pos is None or isinstance(above_pos, Block) and not above_pos.has_collision):
+                (above_pos is None or isinstance(above_pos, Block) and not above_pos.has_collision or
+                 isinstance(above_pos, Entrance) or isinstance(above_pos, Exit) or
+                 isinstance(above_pos, Spawner)):
             pos.dig()
             self.dug_blocks.append(pos)
             self.stop_time = self.freeze_frames
+            self.sprite_direction = direction[0]
 
     def update(self, direction=None):
         if not self.stop_time:

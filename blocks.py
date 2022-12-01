@@ -1,7 +1,5 @@
 import pygame as pg
-
-
-A = 64
+from consts import A
 
 
 class TexturedBlock:
@@ -26,6 +24,10 @@ class Block(TexturedBlock):
         self.recovery_time = recovery_time
         self.time = 0
 
+    def draw(self, surface, x, y):
+        if self.has_collision:
+            super().draw(surface, x, y)
+
     def dig(self):
         self.has_collision = False
 
@@ -40,11 +42,29 @@ class Block(TexturedBlock):
 
 
 class Ladder(TexturedBlock):
-    pass
+    def draw(self, surface, x, y, above, under):
+        k = {
+            (1, 1): 0,
+            (0, 1): 1,
+            (1, 0): 2,
+            (0, 0): 3
+        }
+        if self.texture is not None:
+            surface.blit(self.image, (x, y),
+                         (k.get((isinstance(above, Ladder), isinstance(under, Ladder))) * A, self.crop_index * A, A, A))
 
 
 class Rope(TexturedBlock):
-    pass
+    def draw(self, surface, x, y, left, right):
+        k = {
+            (1, 1): 0,
+            (0, 1): 1,
+            (1, 0): 2,
+            (0, 0): 3
+        }
+        if self.texture is not None:
+            surface.blit(self.image, (x, y),
+                         (k.get((isinstance(left, Rope), isinstance(right, Rope))) * A, self.crop_index * A, A, A))
 
 
 class Gold(TexturedBlock):
@@ -69,4 +89,38 @@ class Gold(TexturedBlock):
 
 
 class Decoration(TexturedBlock):
+    pass
+
+
+class Entrance(TexturedBlock):
+    def __init__(self, texture=None, crop_index=0):
+        super().__init__(texture, crop_index)
+        self.door_pos = 0
+
+    def draw(self, surface, x, y):
+        if self.texture is not None:
+            surface.blit(self.image, (x, y),
+                         (0, 0, A, A))
+            surface.blit(self.image, (x, y + self.door_pos),
+                         (0, 64, A, A))
+
+
+class Exit(TexturedBlock):
+    def __init__(self, texture=None, crop_index=0):
+        super().__init__(texture, crop_index)
+        self.opened = False
+        self.door_pos = 0
+
+    def draw(self, surface, x, y):
+        if self.texture is not None:
+            surface.blit(self.image, (x, y),
+                         (self.opened * A, 0, A, A))
+            surface.blit(self.image, (x, y + self.door_pos),
+                         (self.opened * A, 64, A, A))
+
+    def open(self):
+        self.opened = True
+
+
+class Spawner(TexturedBlock):
     pass

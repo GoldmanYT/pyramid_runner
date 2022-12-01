@@ -1,11 +1,10 @@
 import pygame as pg
 
-from blocks import Block, Ladder, Rope, Gold
+from blocks import Ladder, Rope
 from player import Player
 from field import Field
 from enemy import Enemy
-
-FPS = 167
+from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BACKGROUND_OFFSET_X, BACKGROUND_OFFSET_Y
 
 
 class Game:
@@ -15,8 +14,11 @@ class Game:
 
         self.screen = pg.display.set_mode((w, h))
         run = True
-        self.field = Field(file_name='levels/level0.txt')
-        self.player = Player(2, 2, field=self.field, texture='data/player.png')
+        self.field = Field(file_name='levels/level1_28.txt')
+        self.background_field = self.field.background_field
+        self.foreground_field = self.field.foreground_field
+        x, y = self.field.get_player_pos()
+        self.player = Player(x, y, field=self.field, texture='data/player.png')
         self.a = 50
 
         clock = pg.time.Clock()
@@ -41,7 +43,7 @@ class Game:
             self.player.dig('left')
         elif keys[pg.K_x]:
             self.player.dig('right')
-        if isinstance(inside, Ladder) or isinstance(under, Ladder):
+        if isinstance(inside, Ladder):
             if keys[pg.K_UP] and not keys[pg.K_DOWN]:
                 self.player.update('up')
             elif keys[pg.K_DOWN] and not keys[pg.K_UP]:
@@ -69,11 +71,49 @@ class Game:
 
         for y in range(self.field.h):
             for x in range(self.field.w):
-                if self.field[y][x] is not None and self.field[y][x].texture is not None:
-                    self.field[y][x].draw(self.screen, x * self.a, (self.field.h - y - 1) * self.a)
+                pos = self.background_field[y][x]
+                if pos is not None:
+                    pos.draw(
+                        self.screen,
+                        x * self.a + GLOBAL_OFFSET_X + BACKGROUND_OFFSET_X,
+                        (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + BACKGROUND_OFFSET_Y
+                    )
+        for y in range(self.field.h):
+            for x in range(self.field.w):
+                pos = self.field[y][x]
+                if pos is not None:
+                    if isinstance(pos, Ladder):
+                        pos.draw(
+                            self.screen,
+                            x * self.a + GLOBAL_OFFSET_X,
+                            (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y,
+                            self.field[y + 1][x], self.field[y - 1][x]
+                        )
+                    elif isinstance(pos, Rope):
+                        pos.draw(
+                            self.screen,
+                            x * self.a + GLOBAL_OFFSET_X,
+                            (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y,
+                            self.field[y][x - 1], self.field[y][x + 1]
+                        )
+                    else:
+                        pos.draw(
+                            self.screen,
+                            x * self.a + GLOBAL_OFFSET_X,
+                            (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y
+                        )
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
         self.player.draw(
             self.screen,
-            x * self.a + step_x * self.a // self.player.n_steps,
-            (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps
+            x * self.a + step_x * self.a // self.player.n_steps + GLOBAL_OFFSET_X,
+            (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y
         )
+        for y in range(self.field.h):
+            for x in range(self.field.w):
+                pos = self.foreground_field[y][x]
+                if pos is not None:
+                    pos.draw(
+                        self.screen,
+                        x * self.a + GLOBAL_OFFSET_X,
+                        (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y
+                    )
