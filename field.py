@@ -1,5 +1,6 @@
 from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit
 from backgound import Background
+from enemy import Enemy
 
 
 class Field:
@@ -17,6 +18,7 @@ class Field:
                        if 0 in (x, y) or x == w - 1 or y == h - 1 else
                        None for x in range(w)] for y in range(h)]
         self.background = None
+        self.enemies = []
 
         if file_name is not None:
             with open(file_name) as f:
@@ -27,3 +29,6 @@ class Field:
 
     def get_player_pos(self):
         return self.player_x, self.player_y
+
+    def get_enemies(self):
+        return self.enemies

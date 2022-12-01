@@ -14,11 +14,12 @@ class Game:
 
         self.screen = pg.display.set_mode((w, h))
         run = True
-        self.field = Field(file_name='levels/level1_28.txt')
+        self.field = Field(file_name='levels/text.txt')
         self.background_field = self.field.background_field
         self.foreground_field = self.field.foreground_field
         x, y = self.field.get_player_pos()
         self.player = Player(x, y, field=self.field, texture='data/player.png')
+        self.enemies = self.field.get_enemies()
         self.a = 50
 
         clock = pg.time.Clock()
@@ -37,7 +38,6 @@ class Game:
     def tick(self):
         keys = pg.key.get_pressed()
         inside = self.player.inside()
-        under = self.player.under()
 
         if keys[pg.K_z]:
             self.player.dig('left')
@@ -102,12 +102,21 @@ class Game:
                             x * self.a + GLOBAL_OFFSET_X,
                             (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y
                         )
+
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
         self.player.draw(
             self.screen,
             x * self.a + step_x * self.a // self.player.n_steps + GLOBAL_OFFSET_X,
             (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y
         )
+        for enemy in self.enemies:
+            x, step_x, y, step_y = enemy.x, enemy.step_x, enemy.y, enemy.step_y
+            enemy.draw(
+                self.screen,
+                x * self.a + step_x * self.a // self.player.n_steps + GLOBAL_OFFSET_X,
+                (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y
+            )
+
         for y in range(self.field.h):
             for x in range(self.field.w):
                 pos = self.foreground_field[y][x]

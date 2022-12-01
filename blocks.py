@@ -123,4 +123,20 @@ class Exit(TexturedBlock):
 
 
 class Spawner(TexturedBlock):
-    pass
+    def __init__(self, texture=None, crop_index=0):
+        super().__init__(texture, crop_index)
+        self.spawn_time = 10
+        self.spawning = 0
+
+    def update(self):
+        if not self.spawning:
+            return
+
+        self.spawning -= 1
+
+    def draw(self, surface, x, y):
+        if self.texture is not None:
+            surface.blit(self.image, (x, y), (self.spawning * A, self.crop_index * A, A, A))
+
+    def spawn(self):
+        pass

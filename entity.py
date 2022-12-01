@@ -7,8 +7,6 @@ class Entity:
     def __init__(self, x, y, speed=5500, n_steps=203500, field=None, texture=None):
         if speed > n_steps:
             raise ValueError('Скорость не может быть больше количества шагов')
-        if n_steps % speed != 0:
-            raise ValueError('Количество шагов должно быть кратно скорости')
         self.texture = texture
         if texture is not None:
             self.image = pg.image.load(texture).convert_alpha()

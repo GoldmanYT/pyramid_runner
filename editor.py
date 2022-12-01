@@ -1,7 +1,8 @@
 import pygame as pg
-from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit
+from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit, Spawner
 from inspect import getfullargspec
 from backgound import Background
+from enemy import Enemy
 
 
 def draw(item, x, y, t=True, offset=False):
@@ -45,7 +46,8 @@ items = [Block(texture='data/block.png'),
          Gold(texture='data/gold.png'),
          Decoration(texture='data/decoration.png'),
          Entrance(texture='data/entrance.png'),
-         Exit(texture='data/exit.png')]
+         Exit(texture='data/exit.png'),
+         Spawner(texture='data/spawner.png'), ]
 
 for i in range(len(items)):
     item = items[i]
@@ -56,13 +58,17 @@ for i in range(len(items)):
         defaults = args_spec.defaults
 
         copy = eval(f'{item.__class__.__name__}(' +
-                    ', '.join(f'''{arg}={"'" if type(m:=eval(f"items[{i}].{arg}")) == str else ""}'''
+                    ', '.join(f'''{arg}={"'" if type(m := eval(f"items[{i}].{arg}")) == str else ""}'''
                               f'''{m}{"'" if type(m) == str else ""}'''
                               for k, arg in enumerate(args)
                               if defaults[k] != eval(f"items[{i}].{arg}")) + ')')
         copy.crop_index = j
         temp.append(copy)
     items[i] = temp
+
+enemies = [Enemy(0, 0, texture='data/enemy1.png'),
+           Enemy(0, 0, texture='data/enemy2.png')]
+items.append(enemies)
 
 field = [[items[0][0] if 0 in (x, y) or x == w - 1 or y == h - 1 else None for x in range(w)] for y in range(h)]
 background_field = [[None] * w for _ in range(h)]
@@ -205,14 +211,24 @@ if file_name:
             for x in range(w):
                 pos = field[y][x]
                 if pos is not None:
-                    args_spec = getfullargspec(pos.__init__)
-                    args = args_spec.args[1:]
-                    defaults = args_spec.defaults
-                    f.write(f'self.field[{y}][{x}] = {pos.__class__.__name__}(' +
-                            ', '.join(f'''{arg}={"'" if type(m:=eval(f"field[y][x].{arg}")) == str else ""}'''
-                                      f'''{m}{"'" if type(m) == str else ""}'''
-                                      for i, arg in enumerate(args)
-                                      if defaults[i] != eval(f"field[y][x].{arg}")) + ')\n')
+                    if isinstance(pos, Enemy):
+                        args_spec = getfullargspec(pos.__init__)
+                        args = args_spec.args[3:]
+                        defaults = args_spec.defaults
+                        f.write(f'self.enemies.append({pos.__class__.__name__}({x}, {y}, ' +
+                                ', '.join(f'''{arg}={"'" if type(m := eval(f"field[y][x].{arg}")) == str else ""}'''
+                                          f'''{m}{"'" if type(m) == str else ""}'''
+                                          for i, arg in enumerate(args)
+                                          if defaults[i] != eval(f"field[y][x].{arg}")) + '))\n')
+                    else:
+                        args_spec = getfullargspec(pos.__init__)
+                        args = args_spec.args[1:]
+                        defaults = args_spec.defaults
+                        f.write(f'self.field[{y}][{x}] = {pos.__class__.__name__}(' +
+                                ', '.join(f'''{arg}={"'" if type(m := eval(f"field[y][x].{arg}")) == str else ""}'''
+                                          f'''{m}{"'" if type(m) == str else ""}'''
+                                          for i, arg in enumerate(args)
+                                          if defaults[i] != eval(f"field[y][x].{arg}")) + ')\n')
                     if isinstance(pos, Entrance):
                         f.write(f'self.player_x, self.player_y = {x}, {y}\n')
                 pos = background_field[y][x]
@@ -221,17 +237,19 @@ if file_name:
                     args = args_spec.args[1:]
                     defaults = args_spec.defaults
                     f.write(f'self.background_field[{y}][{x}] = {pos.__class__.__name__}(' +
-                            ', '.join(f'''{arg}={"'" if type(m:=eval(f"background_field[y][x].{arg}")) == str else ""}'''
-                                      f'''{m}{"'" if type(m) == str else ""}'''
-                                      for i, arg in enumerate(args)
-                                      if defaults[i] != eval(f"background_field[y][x].{arg}")) + ')\n')
+                            ', '.join(
+                                f'''{arg}={"'" if type(m := eval(f"background_field[y][x].{arg}")) == str else ""}'''
+                                f'''{m}{"'" if type(m) == str else ""}'''
+                                for i, arg in enumerate(args)
+                                if defaults[i] != eval(f"background_field[y][x].{arg}")) + ')\n')
                 pos = foreground_field[y][x]
                 if pos is not None:
                     args_spec = getfullargspec(pos.__init__)
                     args = args_spec.args[1:]
                     defaults = args_spec.defaults
                     f.write(f'self.foreground_field[{y}][{x}] = {pos.__class__.__name__}(' +
-                            ', '.join(f'''{arg}={"'" if type(m:=eval(f"foreground_field[y][x].{arg}")) == str else ""}'''
-                                      f'''{m}{"'" if type(m) == str else ""}'''
-                                      for i, arg in enumerate(args)
-                                      if defaults[i] != eval(f"foreground_field[y][x].{arg}")) + ')\n')
+                            ', '.join(
+                                f'''{arg}={"'" if type(m := eval(f"foreground_field[y][x].{arg}")) == str else ""}'''
+                                f'''{m}{"'" if type(m) == str else ""}'''
+                                for i, arg in enumerate(args)
+                                if defaults[i] != eval(f"foreground_field[y][x].{arg}")) + ')\n')
