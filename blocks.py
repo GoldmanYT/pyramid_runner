@@ -42,7 +42,7 @@ class Block(TexturedBlock):
 
 
 class Ladder(TexturedBlock):
-    def draw(self, surface, x, y, above, under):
+    def draw(self, surface, x, y, above=None, under=None):
         k = {
             (1, 1): 0,
             (0, 1): 1,
@@ -55,7 +55,7 @@ class Ladder(TexturedBlock):
 
 
 class Rope(TexturedBlock):
-    def draw(self, surface, x, y, left, right):
+    def draw(self, surface, x, y, left=None, right=None):
         k = {
             (1, 1): 0,
             (0, 1): 1,
@@ -79,17 +79,40 @@ class Gold(TexturedBlock):
     def draw(self, surface, x, y):
         if self.texture is not None:
             surface.blit(self.image, (x, y), (self.anim_index * A, self.crop_index * A, A, A))
-            self.frame += 1
-            if self.frame == self.frames:
-                self.frame = 0
-                self.anim_index += self.anim_direction
-                if self.anim_index in (0, self.anim_frames):
-                    self.anim_direction *= -1
-                    self.anim_index += 2 * self.anim_direction
+            self.update()
+
+    def update(self):
+        self.frame += 1
+        if self.frame == self.frames:
+            self.frame = 0
+            self.anim_index += self.anim_direction
+            if self.anim_index in (0, self.anim_frames):
+                self.anim_direction *= -1
+                self.anim_index += 2 * self.anim_direction
 
 
 class Decoration(TexturedBlock):
     pass
+
+
+class AnimatedDecoration(TexturedBlock):
+    def __init__(self, texture=None, crop_index=0, n_frames=18, n_anims=2):
+        super().__init__(texture, crop_index)
+        self.frame = 0
+        self.n_frames = n_frames
+        self.anim = 0
+        self.n_anims = n_anims
+
+    def draw(self, surface, x, y):
+        if self.texture is not None:
+            surface.blit(self.image, (x, y), (self.anim * A, self.crop_index * A, A, A))
+            self.update()
+
+    def update(self):
+        self.frame += 1
+        if self.frame == self.n_frames:
+            self.frame = 1
+            self.anim = (self.anim + 1) % self.n_anims
 
 
 class Entrance(TexturedBlock):
@@ -102,7 +125,7 @@ class Entrance(TexturedBlock):
             surface.blit(self.image, (x, y),
                          (0, 0, A, A))
             surface.blit(self.image, (x, y + self.door_pos),
-                         (0, 64, A, A))
+                         (0, 64, A, A - self.door_pos))
 
 
 class Exit(TexturedBlock):
@@ -116,7 +139,7 @@ class Exit(TexturedBlock):
             surface.blit(self.image, (x, y),
                          (self.opened * A, 0, A, A))
             surface.blit(self.image, (x, y + self.door_pos),
-                         (self.opened * A, 64, A, A))
+                         (self.opened * A, 64, A, A - self.door_pos))
 
     def open(self):
         self.opened = True

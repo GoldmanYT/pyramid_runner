@@ -21,6 +21,7 @@ class Entity:
         self.moved = False
         self.sprite_direction = 'l'
         self.direction = None
+        self.last_direction = 'left'
         self.anim = 'standing_l'
         self.anims = {
             'standing_l': 0,
@@ -47,21 +48,8 @@ class Entity:
             'digging': 10
         }
 
-    def check_state(self):
-        if self.direction in ('left', 'right'):
-            self.sprite_direction = self.direction[0]
-        if not self.is_standing():
-            return f'falling_{self.sprite_direction}'
-        inside = self.inside()
-        if isinstance(inside, Rope) and not self.step_y:
-            return f'roping_{self.sprite_direction}'
-        if isinstance(inside, Ladder) and self.direction in ('up', 'down'):
-            return f'laddering_{self.sprite_direction}'
-        if self.stop_time:
-            return f'digging_{self.sprite_direction}'
-        if self.direction in ('left', 'right'):
-            return f'going_{self.sprite_direction}'
-        return f'standing_{self.sprite_direction}'
+    def die(self):
+        del self
 
     def pos(self):
         return (self.x + (self.step_x + self.n_steps // 2) // self.n_steps,
@@ -90,6 +78,23 @@ class Entity:
             return True
         return False
 
+    def check_state(self):
+        if self.last_direction in ('left', 'right'):
+            self.sprite_direction = self.last_direction[0]
+        if not self.is_standing():
+            return f'falling_{self.sprite_direction}'
+        inside = self.inside()
+        under = self.under()
+        if isinstance(inside, Rope) and not self.step_y:
+            return f'roping_{self.sprite_direction}'
+        if (isinstance(inside, Ladder) or isinstance(under, Ladder)) and self.last_direction in ('up', 'down'):
+            return f'laddering_{self.sprite_direction}'
+        if self.stop_time:
+            return f'digging_{self.sprite_direction}'
+        if self.direction in ('left', 'right') and self.moved:
+            return f'going_{self.sprite_direction}'
+        return f'standing_{self.sprite_direction}'
+
     def draw(self, surface, x, y):
         if self.texture is not None:
             anim = self.check_state()
@@ -98,28 +103,57 @@ class Entity:
                 self.frame = 0
                 self.n_anim = 0
             crop_index = self.anims.get(anim)
-            n_frames = self.n_frames.get(anim.split('_')[0])
+            anim, direction = anim.split('_')
+            n_frames = self.n_frames.get(anim)
             surface.blit(self.image, (x, y), (self.n_anim * A, crop_index * A, A, A))
-            if self.moved or not self.moved:
+            if self.moved or anim == 'standing' or self.stop_time and anim != 'roping':
                 self.frame += 1
             if self.frame == n_frames:
                 self.frame = 0
                 self.n_anim = (self.n_anim + 1) % N_ANIMS
+        self.moved = False
 
-    def update(self, direction=None):
+    def update(self, directions=None):
         if not self.is_standing():
             self.move('down')
             self.direction = 'down'
-        elif direction is not None:
-            if not (isinstance(self.inside(), Ladder) or isinstance(self.under(), Ladder) and self.step_y) \
-                    and direction == 'up':
+            self.last_direction = 'down'
+        elif directions is not None:
+            inside = self.inside()
+            under = self.under()
+            if not (isinstance(inside, Ladder) or isinstance(under, Ladder) and self.step_y) \
+                    and 'up' in directions:
                 self.direction = None
-                return
-            self.move(direction)
+                self.moved = False
+                directions.remove('up')
+            direction = None
+            if isinstance(inside, Ladder) or isinstance(under, Ladder) and self.step_y:
+                if 'up' in directions:
+                    direction = 'up'
+                elif 'down' in directions:
+                    direction = 'down'
+            if direction is not None:
+                self.move(direction)
+            if not self.moved:
+                if 'left' in directions:
+                    direction = 'left'
+                elif 'right' in directions:
+                    direction = 'right'
+                if direction is not None:
+                    self.move(direction)
+            if not self.moved:
+                if 'up' in directions:
+                    direction = 'up'
+                elif 'down' in directions:
+                    direction = 'down'
+                if direction is not None:
+                    self.move(direction)
             if not self.stop_time:
                 self.direction = direction
+                self.last_direction = direction
         else:
             self.direction = None
+            self.moved = False
 
     def move_to_center(self):
         if self.step_x < self.n_steps - self.step_x:

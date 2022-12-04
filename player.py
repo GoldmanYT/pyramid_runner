@@ -1,5 +1,5 @@
 from entity import Entity
-from blocks import Block, Gold, Entrance, Exit, Spawner
+from blocks import Block, Gold, Entrance, Exit, Spawner, Decoration, AnimatedDecoration
 
 
 class Player(Entity):
@@ -7,6 +7,7 @@ class Player(Entity):
         super().__init__(x, y, speed=speed, n_steps=n_steps, field=field, texture=texture)
         self.dug_blocks = []
         self.freeze_frames = 67
+        self.collected_gold = 0
 
     def dig(self, direction):
         directions = ['left', 'right']
@@ -24,15 +25,16 @@ class Player(Entity):
         if isinstance(pos, Block) and pos.diggable and pos.has_collision and \
                 (above_pos is None or isinstance(above_pos, Block) and not above_pos.has_collision or
                  isinstance(above_pos, Entrance) or isinstance(above_pos, Exit) or
-                 isinstance(above_pos, Spawner)):
+                 isinstance(above_pos, Spawner) or isinstance(above_pos, Decoration) or
+                 isinstance(above_pos, AnimatedDecoration)):
             pos.dig()
             self.dug_blocks.append(pos)
             self.stop_time = self.freeze_frames
-            self.sprite_direction = direction[0]
+            self.last_direction = direction
 
-    def update(self, direction=None):
+    def update(self, directions=None):
         if not self.stop_time:
-            super().update(direction)
+            super().update(directions)
         else:
             self.move_to_center()
             self.stop_time -= 1
@@ -40,6 +42,7 @@ class Player(Entity):
         if isinstance(inside, Gold):
             x, y = self.pos()
             self.field[y][x] = None
+            self.collected_gold += 1
 
         recovered_blocks = []
         for i, block in enumerate(self.dug_blocks):

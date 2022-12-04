@@ -1,4 +1,4 @@
 from game import Game
 
 
-game = Game(800, 800)
+game = Game(800, 600)

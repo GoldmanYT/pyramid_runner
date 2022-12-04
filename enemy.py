@@ -14,5 +14,5 @@ class Enemy(Entity):
             'digging': 10
         }
 
-    def update(self, direction=None):
-        pass
+    def update(self, directions=None):
+        super().update(directions)

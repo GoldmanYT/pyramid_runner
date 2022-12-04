@@ -1,7 +1,7 @@
 import pygame as pg
-from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit, Spawner
+from blocks import Block, Ladder, Rope, Gold, Decoration, AnimatedDecoration, Entrance, Exit, Spawner
 from inspect import getfullargspec
-from backgound import Background
+from background import Background
 from enemy import Enemy
 
 
@@ -30,7 +30,6 @@ def delete(container, x, y):
     container[y][x] = None
 
 
-w, h = map(int, input('w h: ').split())
 a = 50
 FPS = 167
 
@@ -39,6 +38,7 @@ pg.init()
 screen = pg.display.set_mode((800, 600))
 clock = pg.time.Clock()
 run = True
+
 items = [Block(texture='data/block.png'),
          Block(texture='data/block_diggable.png', diggable=True),
          Ladder(texture='data/ladder.png'),
@@ -66,14 +66,13 @@ for i in range(len(items)):
         temp.append(copy)
     items[i] = temp
 
-enemies = [Enemy(0, 0, texture='data/enemy1.png'),
-           Enemy(0, 0, texture='data/enemy2.png')]
+enemies = [Enemy(texture='data/enemy1.png'),
+           Enemy(texture='data/enemy2.png')]
 items.append(enemies)
-
-field = [[items[0][0] if 0 in (x, y) or x == w - 1 or y == h - 1 else None for x in range(w)] for y in range(h)]
-background_field = [[None] * w for _ in range(h)]
-foreground_field = [[None] * w for _ in range(h)]
-background = None
+anim_decs = [AnimatedDecoration(texture='data/decoration_animated.png', crop_index=0, n_frames=53, n_anims=2),
+             AnimatedDecoration(texture='data/decoration_animated.png', crop_index=1, n_frames=10, n_anims=8),
+             AnimatedDecoration(texture='data/decoration_animated.png', crop_index=2, n_frames=10, n_anims=4)]
+items.append(anim_decs)
 n_backgrounds = 7
 backgrounds = [Background(texture='data/background.png', crop_index=i) for i in range(n_backgrounds)]
 edit_mode = 0
@@ -85,6 +84,19 @@ delete_mode = False
 place_mode = False
 move_mode = False
 inventory_opened = False
+
+s = input('Открыть? ')
+if s == 'open':
+    file_name = input('Введите имя файла: ')
+    with open('levels/' + file_name) as f:
+        exec(f.read().replace('self.', ''))
+else:
+    w, h = map(int, input('w h: ').split())
+
+    field = [[items[0][0] if 0 in (x, y) or x == w - 1 or y == h - 1 else None for x in range(w)] for y in range(h)]
+    background_field = [[None] * w for _ in range(h)]
+    foreground_field = [[None] * w for _ in range(h)]
+    background = None
 
 while run:
     screen.fill((0, 0, 0))
@@ -200,10 +212,13 @@ while run:
     pg.display.flip()
 pg.quit()
 
+gold_count = 0
 file_name = input('Введите имя файла: ')
 if file_name:
     with open('levels/' + file_name, 'w') as f:
         f.write(f'self.w, self.h = {w}, {h}' + '\n')
+        f.write(f'''self.background = {None if background is None else 
+        f"Background(texture='data/background.png', crop_index={background})"}\n''')
         f.write(f'self.field = [[None] * {w} for y in range({h})]\n')
         f.write(f'self.background_field = [[None] * {w} for y in range({h})]\n')
         f.write(f'self.foreground_field = [[None] * {w} for y in range({h})]\n')
@@ -231,6 +246,10 @@ if file_name:
                                           if defaults[i] != eval(f"field[y][x].{arg}")) + ')\n')
                     if isinstance(pos, Entrance):
                         f.write(f'self.player_x, self.player_y = {x}, {y}\n')
+                    elif isinstance(pos, Exit):
+                        f.write(f'self.exit_x, self.exit_y = {x}, {y}\n')
+                    elif isinstance(pos, Gold):
+                        gold_count += 1
                 pos = background_field[y][x]
                 if pos is not None:
                     args_spec = getfullargspec(pos.__init__)
@@ -253,3 +272,4 @@ if file_name:
                                 f'''{m}{"'" if type(m) == str else ""}'''
                                 for i, arg in enumerate(args)
                                 if defaults[i] != eval(f"foreground_field[y][x].{arg}")) + ')\n')
+        f.write(f'self.gold_count = {gold_count}\n')

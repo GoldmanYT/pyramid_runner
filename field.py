@@ -1,5 +1,5 @@
-from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit
-from backgound import Background
+from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit, AnimatedDecoration, Spawner
+from background import Background
 from enemy import Enemy
 
 
@@ -12,6 +12,8 @@ class Field:
             w, h = 3, 3
         self.w, self.h = w, h
         self.player_x, self.player_y = 1, 1
+        self.exit_x, self.exit_y = 1, 1
+        self.gold_count = 0
         self.background_field = [[None] * w for _ in range(h)]
         self.foreground_field = [[None] * w for _ in range(h)]
         self.field = [[Block()
@@ -24,6 +26,9 @@ class Field:
             with open(file_name) as f:
                 exec(f.read(), globals(), locals())
 
+        for enemy in self.enemies:
+            enemy.field = self.field
+
     def __getitem__(self, key):
         return self.field[key]
 
@@ -32,3 +37,12 @@ class Field:
 
     def get_enemies(self):
         return self.enemies
+
+    def get_background(self):
+        return self.background
+
+    def get_gold_count(self):
+        return self.gold_count
+
+    def get_exit(self):
+        return self.field[self.exit_y][self.exit_x]

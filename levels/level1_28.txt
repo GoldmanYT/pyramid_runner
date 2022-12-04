@@ -459,3 +459,5 @@ self.field[15][14] = Block(texture='data/block.png', crop_index=4)
 self.background_field[15][14] = Decoration(texture='data/decoration.png', crop_index=11)
 self.field[15][15] = Block(texture='data/block.png', crop_index=4)
 self.background_field[15][15] = Decoration(texture='data/decoration.png', crop_index=11)
+self.gold_count = 16
+self.exit_x, self.exit_y = 1, 8
