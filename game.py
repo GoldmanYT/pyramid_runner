@@ -1,9 +1,9 @@
 import pygame as pg
 
-from blocks import Ladder, Rope
+from blocks import Ladder, Rope, FakeBlock
 from player import Player
 from field import Field
-from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BACKGROUND_OFFSET_X, BACKGROUND_OFFSET_Y
+from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BG_OFFSET_X, BG_OFFSET_Y
 from camera import Camera
 
 
@@ -23,7 +23,7 @@ class Game:
         self.camera = None
         self.gold_count = None
         self.exit = None
-        self.load_level('levels/level1_28.txt')
+        self.load_level('levels/level0_3.txt')
 
         clock = pg.time.Clock()
         run = True
@@ -44,7 +44,7 @@ class Game:
         self.background_field = self.field.background_field
         self.foreground_field = self.field.foreground_field
         x, y = self.field.get_player_pos()
-        self.player = Player(x, y, field=self.field, texture='data/player.png')
+        self.player = Player(x, y, field=self.field, image=pg.image.load('data/player.png').convert_alpha())
         self.enemies = self.field.get_enemies()
         self.background = self.field.get_background()
         self.camera = Camera(self.a * self.field.w, self.a * self.field.h, self.w, self.h)
@@ -80,6 +80,11 @@ class Game:
         for enemy in self.enemies:
             enemy.update()
 
+        for row in self.field:
+            for block in row:
+                if isinstance(block, FakeBlock):
+                    block.update(self.player)
+
     def draw(self):
         self.screen.fill((0, 0, 0))
         camera_x, camera_y = self.camera.pos(
@@ -96,9 +101,10 @@ class Game:
                 if pos is not None:
                     pos.draw(
                         self.screen,
-                        x * self.a + GLOBAL_OFFSET_X + BACKGROUND_OFFSET_X + camera_x,
-                        (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + BACKGROUND_OFFSET_Y + camera_y
+                        x * self.a + GLOBAL_OFFSET_X + BG_OFFSET_X + camera_x,
+                        (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + BG_OFFSET_Y + camera_y
                     )
+
         for y in range(self.field.h):
             for x in range(self.field.w):
                 pos = self.field[y][x]
@@ -118,18 +124,16 @@ class Game:
                             self.field[y][x - 1], self.field[y][x + 1]
                         )
                     else:
+                        if isinstance(self.player.inside(), FakeBlock) and isinstance(pos, FakeBlock) and \
+                                pos.player_inside:
+                            self.draw_player(camera_x, camera_y)
                         pos.draw(
                             self.screen,
                             x * self.a + GLOBAL_OFFSET_X + camera_x,
                             (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + camera_y
                         )
-
-        x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
-        self.player.draw(
-            self.screen,
-            x * self.a + step_x * self.a // self.player.n_steps + GLOBAL_OFFSET_X + camera_x,
-            (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y + camera_y
-        )
+        if not isinstance(self.player.inside(), FakeBlock):
+            self.draw_player(camera_x, camera_y)
         for enemy in self.enemies:
             x, step_x, y, step_y = enemy.x, enemy.step_x, enemy.y, enemy.step_y
             enemy.draw(
@@ -147,3 +151,11 @@ class Game:
                         x * self.a + GLOBAL_OFFSET_X + camera_x,
                         (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + camera_y
                     )
+
+    def draw_player(self, camera_x, camera_y):
+        x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
+        self.player.draw(
+            self.screen,
+            x * self.a + step_x * self.a // self.player.n_steps + GLOBAL_OFFSET_X + camera_x,
+            (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y + camera_y
+        )

@@ -3,26 +3,30 @@ from consts import A
 
 
 class TexturedBlock:
-    def __init__(self, texture=None, crop_index=0):
-        self.texture = texture
-        if texture is not None:
-            self.image = pg.image.load(texture).convert_alpha()
-            self.crop_index = crop_index
+    def __init__(self, image=None, crop_index=0):
+        self.image = image
+        self.crop_index = crop_index
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.crop_index == other.crop_index
 
     def draw(self, surface, x, y):
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y), (0, self.crop_index * A, A, A))
 
 
 class Block(TexturedBlock):
-    def __init__(self, texture=None, crop_index=0, diggable=False, has_collision=True, recovery_time=1084):
-        super().__init__(texture, crop_index)
+    def __init__(self, image=None, crop_index=0, diggable=False, has_collision=True, recovery_time=1084):
+        super().__init__(image, crop_index)
         if not diggable and not has_collision:
             raise ValueError('Неразрушаемый блок должен иметь коллизию')
 
         self.diggable, self.has_collision = diggable, has_collision
         self.recovery_time = recovery_time
         self.time = 0
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.crop_index == other.crop_index and self.diggable == other.diggable
 
     def draw(self, surface, x, y):
         if self.has_collision:
@@ -49,7 +53,7 @@ class Ladder(TexturedBlock):
             (1, 0): 2,
             (0, 0): 3
         }
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y),
                          (k.get((isinstance(above, Ladder), isinstance(under, Ladder))) * A, self.crop_index * A, A, A))
 
@@ -62,14 +66,14 @@ class Rope(TexturedBlock):
             (1, 0): 2,
             (0, 0): 3
         }
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y),
                          (k.get((isinstance(left, Rope), isinstance(right, Rope))) * A, self.crop_index * A, A, A))
 
 
 class Gold(TexturedBlock):
-    def __init__(self, texture=None, crop_index=0):
-        super().__init__(texture, crop_index)
+    def __init__(self, image=None, crop_index=0):
+        super().__init__(image, crop_index)
         self.frames = 19
         self.frame = 0
         self.anim_index = 0
@@ -77,7 +81,7 @@ class Gold(TexturedBlock):
         self.anim_direction = 1
 
     def draw(self, surface, x, y):
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y), (self.anim_index * A, self.crop_index * A, A, A))
             self.update()
 
@@ -96,15 +100,15 @@ class Decoration(TexturedBlock):
 
 
 class AnimatedDecoration(TexturedBlock):
-    def __init__(self, texture=None, crop_index=0, n_frames=18, n_anims=2):
-        super().__init__(texture, crop_index)
+    def __init__(self, image=None, crop_index=0, n_frames=18, n_anims=2):
+        super().__init__(image, crop_index)
         self.frame = 0
         self.n_frames = n_frames
         self.anim = 0
         self.n_anims = n_anims
 
     def draw(self, surface, x, y):
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y), (self.anim * A, self.crop_index * A, A, A))
             self.update()
 
@@ -116,12 +120,12 @@ class AnimatedDecoration(TexturedBlock):
 
 
 class Entrance(TexturedBlock):
-    def __init__(self, texture=None, crop_index=0):
-        super().__init__(texture, crop_index)
+    def __init__(self, image=None, crop_index=0):
+        super().__init__(image, crop_index)
         self.door_pos = 0
 
     def draw(self, surface, x, y):
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y),
                          (0, 0, A, A))
             surface.blit(self.image, (x, y + self.door_pos),
@@ -129,13 +133,13 @@ class Entrance(TexturedBlock):
 
 
 class Exit(TexturedBlock):
-    def __init__(self, texture=None, crop_index=0):
-        super().__init__(texture, crop_index)
+    def __init__(self, image=None, crop_index=0):
+        super().__init__(image, crop_index)
         self.opened = False
         self.door_pos = 0
 
     def draw(self, surface, x, y):
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y),
                          (self.opened * A, 0, A, A))
             surface.blit(self.image, (x, y + self.door_pos),
@@ -146,8 +150,8 @@ class Exit(TexturedBlock):
 
 
 class Spawner(TexturedBlock):
-    def __init__(self, texture=None, crop_index=0):
-        super().__init__(texture, crop_index)
+    def __init__(self, image=None, crop_index=0):
+        super().__init__(image, crop_index)
         self.spawn_time = 10
         self.spawning = 0
 
@@ -158,8 +162,24 @@ class Spawner(TexturedBlock):
         self.spawning -= 1
 
     def draw(self, surface, x, y):
-        if self.texture is not None:
+        if self.image is not None:
             surface.blit(self.image, (x, y), (self.spawning * A, self.crop_index * A, A, A))
 
     def spawn(self):
         pass
+
+
+class FakeBlock(TexturedBlock):
+    def __init__(self, image=None, crop_index=0):
+        super().__init__(image, crop_index)
+        self.player_inside = False
+
+    def update(self, player=None):
+        if player is not None and player.inside() is self:
+            self.player_inside = True
+        else:
+            self.player_inside = False
+
+    def draw(self, surface, x, y):
+        if self.image is not None:
+            surface.blit(self.image, (x, y), (self.player_inside * A, self.crop_index * A, A, A))

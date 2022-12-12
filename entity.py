@@ -4,12 +4,10 @@ from consts import A, N_ANIMS
 
 
 class Entity:
-    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, texture=None):
+    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, image=None):
         if speed > n_steps:
             raise ValueError('Скорость не может быть больше количества шагов')
-        self.texture = texture
-        if texture is not None:
-            self.image = pg.image.load(texture).convert_alpha()
+        self.image = image
         self.x, self.y = x, y
         self.ver_speed = speed
         self.hor_speed = 23 * speed // 22
@@ -48,9 +46,6 @@ class Entity:
             'digging': 10
         }
 
-    def die(self):
-        del self
-
     def pos(self):
         return (self.x + (self.step_x + self.n_steps // 2) // self.n_steps,
                 self.y + (self.step_y + self.n_steps // 2) // self.n_steps)
@@ -71,10 +66,9 @@ class Entity:
     def is_standing(self):
         under = self.under()
         inside = self.inside()
-        x, y = self.pos()
         if isinstance(under, Block) and under.has_collision or \
                 isinstance(under, Ladder) or isinstance(inside, Ladder) or \
-                isinstance(self.field[y][x], Rope) and not self.step_y:
+                isinstance(inside, Rope) and not self.step_y:
             return True
         return False
 
@@ -96,7 +90,7 @@ class Entity:
         return f'standing_{self.sprite_direction}'
 
     def draw(self, surface, x, y):
-        if self.texture is not None:
+        if self.image is not None:
             anim = self.check_state()
             if anim != self.anim:
                 self.anim = anim

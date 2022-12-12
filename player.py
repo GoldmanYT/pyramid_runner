@@ -3,8 +3,8 @@ from blocks import Block, Gold, Entrance, Exit, Spawner, Decoration, AnimatedDec
 
 
 class Player(Entity):
-    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, texture=None):
-        super().__init__(x, y, speed=speed, n_steps=n_steps, field=field, texture=texture)
+    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, image=None):
+        super().__init__(x, y, speed, n_steps, field, image)
         self.dug_blocks = []
         self.freeze_frames = 67
         self.collected_gold = 0

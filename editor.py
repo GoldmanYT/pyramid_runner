@@ -1,21 +1,17 @@
 import pygame as pg
-from blocks import Block, Ladder, Rope, Gold, Decoration, AnimatedDecoration, Entrance, Exit, Spawner
-from inspect import getfullargspec
+from blocks import Block, Ladder, Rope, Gold, Decoration, AnimatedDecoration, Entrance, Exit, Spawner, FakeBlock
 from background import Background
 from enemy import Enemy
+from copy import deepcopy
+from consts import A, BG_H
 
 
 def draw(item, x, y, t=True, offset=False):
     global a, cam_x, cam_y, offset_x, offset_y, field
-    if item is not None and item.texture is not None:
-        if isinstance(item, Ladder) or isinstance(item, Rope):
-            item.draw(screen,
-                      x * a - (cam_x + 2 if t else 0) + (offset_x if offset else 0),
-                      y * a - (cam_y + 14 if t else 0) + (offset_y if offset else 0), None, None)
-        else:
-            item.draw(screen,
-                      x * a - (cam_x + 2 if t else 0) + (offset_x if offset else 0),
-                      y * a - (cam_y + 14 if t else 0) + (offset_y if offset else 0))
+    if item is not None and item.image is not None:
+        item.draw(screen,
+                  x * a - (cam_x + 2 if t else 0) + (offset_x if offset else 0),
+                  y * a - (cam_y + 14 if t else 0) + (offset_y if offset else 0))
 
 
 def on_field(x, y):
@@ -23,7 +19,8 @@ def on_field(x, y):
 
 
 def place(container, item, selected_index, x, y):
-    container[y][x] = item[selected_index]
+    if edit_mode == 0 or edit_mode != 0 and isinstance(item[selected_index], (Decoration, AnimatedDecoration)):
+        container[y][x] = item[selected_index]
 
 
 def delete(container, x, y):
@@ -31,7 +28,6 @@ def delete(container, x, y):
 
 
 a = 50
-FPS = 167
 
 pg.init()
 
@@ -39,42 +35,54 @@ screen = pg.display.set_mode((800, 600))
 clock = pg.time.Clock()
 run = True
 
-items = [Block(texture='data/block.png'),
-         Block(texture='data/block_diggable.png', diggable=True),
-         Ladder(texture='data/ladder.png'),
-         Rope(texture='data/rope.png'),
-         Gold(texture='data/gold.png'),
-         Decoration(texture='data/decoration.png'),
-         Entrance(texture='data/entrance.png'),
-         Exit(texture='data/exit.png'),
-         Spawner(texture='data/spawner.png'), ]
+items = []
+linear_items = []
+texture_names = ['data/block.png', 'data/block_diggable.png', 'data/ladder.png', 'data/rope.png', 'data/gold.png',
+                 'data/decoration.png', 'data/entrance.png', 'data/exit.png', 'data/spawner.png',
+                 'data/fake_block.png']
+blocks = [Block(), Block(diggable=True), Ladder(), Rope(), Gold(), Decoration(), Entrance(), Exit(), Spawner(),
+          FakeBlock()]
+blocks[-1].player_inside = True
 
-for i in range(len(items)):
-    item = items[i]
+for texture_name, block in zip(texture_names, blocks, strict=True):
     temp = []
-    for j in range(item.image.get_size()[1] // 64):
-        args_spec = getfullargspec(item.__init__)
-        args = args_spec.args[1:]
-        defaults = args_spec.defaults
-
-        copy = eval(f'{item.__class__.__name__}(' +
-                    ', '.join(f'''{arg}={"'" if type(m := eval(f"items[{i}].{arg}")) == str else ""}'''
-                              f'''{m}{"'" if type(m) == str else ""}'''
-                              for k, arg in enumerate(args)
-                              if defaults[k] != eval(f"items[{i}].{arg}")) + ')')
-        copy.crop_index = j
+    image = pg.image.load(texture_name).convert_alpha()
+    for i in range(image.get_size()[1] // A):
+        copy = deepcopy(block)
+        copy.image = image
+        copy.crop_index = i
         temp.append(copy)
-    items[i] = temp
+    items.append(temp)
+    linear_items.extend(temp)
 
-enemies = [Enemy(texture='data/enemy1.png'),
-           Enemy(texture='data/enemy2.png')]
+enemies_texture_names = ['data/enemy1.png', 'data/enemy2.png']
+enemies = []
+for texture_name in enemies_texture_names:
+    enemy = Enemy()
+    image = pg.image.load(texture_name).convert_alpha()
+    copy = deepcopy(enemy)
+    copy.image = image
+    enemies.append(copy)
 items.append(enemies)
-anim_decs = [AnimatedDecoration(texture='data/decoration_animated.png', crop_index=0, n_frames=53, n_anims=2),
-             AnimatedDecoration(texture='data/decoration_animated.png', crop_index=1, n_frames=10, n_anims=8),
-             AnimatedDecoration(texture='data/decoration_animated.png', crop_index=2, n_frames=10, n_anims=4)]
+linear_items.extend(enemies)
+
+anim_decs = [AnimatedDecoration(crop_index=0, n_frames=53, n_anims=2),
+             AnimatedDecoration(crop_index=1, n_frames=10, n_anims=8),
+             AnimatedDecoration(crop_index=2, n_frames=37, n_anims=4)]
+anim_decs_name = 'data/decoration_animated.png'
+image = pg.image.load(anim_decs_name)
+for i, anim_dec in enumerate(anim_decs):
+    anim_decs[i].image = image
 items.append(anim_decs)
-n_backgrounds = 7
-backgrounds = [Background(texture='data/background.png', crop_index=i) for i in range(n_backgrounds)]
+linear_items.extend(anim_decs)
+
+backgrounds = []
+background_texture_name = 'data/background.png'
+image = pg.image.load(background_texture_name).convert()
+for i in range(image.get_size()[1] // BG_H):
+    backgrounds.append(Background(image=image, crop_index=i))
+
+font = pg.font.Font(None, 18)
 edit_mode = 0
 offset_x, offset_y = 10, -10
 selected_item = 0
@@ -85,18 +93,23 @@ place_mode = False
 move_mode = False
 inventory_opened = False
 
+background = None
+
 s = input('Открыть? ')
 if s == 'open':
     file_name = input('Введите имя файла: ')
     with open('levels/' + file_name) as f:
         exec(f.read().replace('self.', ''))
+    if background is not None:
+        background = background.crop_index
 else:
     w, h = map(int, input('w h: ').split())
 
     field = [[items[0][0] if 0 in (x, y) or x == w - 1 or y == h - 1 else None for x in range(w)] for y in range(h)]
     background_field = [[None] * w for _ in range(h)]
     foreground_field = [[None] * w for _ in range(h)]
-    background = None
+
+FPS = 167
 
 while run:
     screen.fill((0, 0, 0))
@@ -190,7 +203,7 @@ while run:
                     background = 0
                 else:
                     if keys[pg.K_LSHIFT]:
-                        background = (background + 1) % n_backgrounds
+                        background = (background + 1) % len(backgrounds)
                     else:
                         background = None
             elif event.key == pg.K_e:
@@ -198,16 +211,21 @@ while run:
     for y in range(h - 1, -1, -1):
         for x in range(w):
             draw(background_field[h - y - 1][x], x, y, offset=True)
-    if edit_mode in (0, 1):
-        for y in range(h - 1, -1, -1):
-            for x in range(w):
-                draw(field[h - y - 1][x], x, y)
-    if edit_mode == 1:
-        for y in range(h - 1, -1, -1):
-            for x in range(w):
-                draw(foreground_field[h - y - 1][x], x, y)
+    for y in range(h - 1, -1, -1):
+        for x in range(w):
+            draw(field[h - y - 1][x], x, y)
+    for y in range(h - 1, -1, -1):
+        for x in range(w):
+            draw(foreground_field[h - y - 1][x], x, y)
+    text = {
+        0: 'Основной слой',
+        1: 'Верхний слой',
+        2: 'Нижний слой'
+    }
+    text = font.render(text.get(edit_mode), True, 'white')
     screen.fill((0, 0, 0), (0, 0, 64, 64))
     draw(items[selected_item][selected_index], 0, 0, False)
+    screen.blit(text, (0, 0))
     clock.tick(FPS)
     pg.display.flip()
 pg.quit()
@@ -217,59 +235,97 @@ file_name = input('Введите имя файла: ')
 if file_name:
     with open('levels/' + file_name, 'w') as f:
         f.write(f'self.w, self.h = {w}, {h}' + '\n')
-        f.write(f'''self.background = {None if background is None else 
-        f"Background(texture='data/background.png', crop_index={background})"}\n''')
+        f.write("""
+items = []
+linear_items = []
+texture_names = ['data/block.png', 'data/block_diggable.png', 'data/ladder.png', 'data/rope.png', 'data/gold.png',
+                 'data/decoration.png', 'data/entrance.png', 'data/exit.png', 'data/spawner.png',
+                 'data/fake_block.png']
+blocks = [Block(), Block(diggable=True), Ladder(), Rope(), Gold(), Decoration(), Entrance(), Exit(), Spawner(),
+          FakeBlock()]
+
+for texture_name, block in zip(texture_names, blocks, strict=True):
+    temp = []
+    image = pg.image.load(texture_name).convert_alpha()
+    for i in range(image.get_size()[1] // A):
+        copy = deepcopy(block)
+        copy.image = image
+        copy.crop_index = i
+        temp.append(copy)
+    items.append(temp)
+    linear_items.extend(temp)
+
+enemies_texture_names = ['data/enemy1.png', 'data/enemy2.png']
+enemies = []
+for texture_name in enemies_texture_names:
+    enemy = Enemy()
+    image = pg.image.load(texture_name).convert_alpha()
+    copy = deepcopy(enemy)
+    copy.image = image
+    enemies.append(copy)
+items.append(enemies)
+linear_items.extend(enemies)
+
+anim_decs = [AnimatedDecoration(crop_index=0, n_frames=53, n_anims=2),
+             AnimatedDecoration(crop_index=1, n_frames=10, n_anims=8),
+             AnimatedDecoration(crop_index=2, n_frames=10, n_anims=4)]
+anim_decs_name = 'data/decoration_animated.png'
+image = pg.image.load(anim_decs_name)
+for i, anim_dec in enumerate(anim_decs):
+    anim_decs[i].image = image
+items.append(anim_decs)
+linear_items.extend(anim_decs)
+
+backgrounds = []
+background_texture_name = 'data/background.png'
+image = pg.image.load(background_texture_name).convert()
+for i in range(image.get_size()[1] // BG_H):
+    backgrounds.append(Background(image=image, crop_index=i))
+
+""")
+        f.write(f'''self.background = {None if background is None else
+        f"Background(image=backgrounds[{background}].image, crop_index={background})"}\n''')
         f.write(f'self.field = [[None] * {w} for y in range({h})]\n')
         f.write(f'self.background_field = [[None] * {w} for y in range({h})]\n')
         f.write(f'self.foreground_field = [[None] * {w} for y in range({h})]\n')
         for y in range(h):
             for x in range(w):
                 pos = field[y][x]
-                if pos is not None:
+                if pos is not None and hasattr(pos, 'image'):
+                    image = pos.image
+                    pos.image = None
+                    i = linear_items.index(pos)
                     if isinstance(pos, Enemy):
-                        args_spec = getfullargspec(pos.__init__)
-                        args = args_spec.args[3:]
-                        defaults = args_spec.defaults
-                        f.write(f'self.enemies.append({pos.__class__.__name__}({x}, {y}, ' +
-                                ', '.join(f'''{arg}={"'" if type(m := eval(f"field[y][x].{arg}")) == str else ""}'''
-                                          f'''{m}{"'" if type(m) == str else ""}'''
-                                          for i, arg in enumerate(args)
-                                          if defaults[i] != eval(f"field[y][x].{arg}")) + '))\n')
+                        f.write(f'self.enemies.append(Enemy({x}, {y}, image=linear_items[{i}].image, field=self.field))\n')
                     else:
-                        args_spec = getfullargspec(pos.__init__)
-                        args = args_spec.args[1:]
-                        defaults = args_spec.defaults
-                        f.write(f'self.field[{y}][{x}] = {pos.__class__.__name__}(' +
-                                ', '.join(f'''{arg}={"'" if type(m := eval(f"field[y][x].{arg}")) == str else ""}'''
-                                          f'''{m}{"'" if type(m) == str else ""}'''
-                                          for i, arg in enumerate(args)
-                                          if defaults[i] != eval(f"field[y][x].{arg}")) + ')\n')
-                    if isinstance(pos, Entrance):
-                        f.write(f'self.player_x, self.player_y = {x}, {y}\n')
-                    elif isinstance(pos, Exit):
-                        f.write(f'self.exit_x, self.exit_y = {x}, {y}\n')
-                    elif isinstance(pos, Gold):
-                        gold_count += 1
+                        f.write(f'''image = linear_items[{i}].image
+linear_items[{i}].image = None
+copy = deepcopy(linear_items[{i}])
+self.field[{y}][{x}] = copy
+self.field[{y}][{x}].image = image
+linear_items[{i}].image = image
+''')
                 pos = background_field[y][x]
-                if pos is not None:
-                    args_spec = getfullargspec(pos.__init__)
-                    args = args_spec.args[1:]
-                    defaults = args_spec.defaults
-                    f.write(f'self.background_field[{y}][{x}] = {pos.__class__.__name__}(' +
-                            ', '.join(
-                                f'''{arg}={"'" if type(m := eval(f"background_field[y][x].{arg}")) == str else ""}'''
-                                f'''{m}{"'" if type(m) == str else ""}'''
-                                for i, arg in enumerate(args)
-                                if defaults[i] != eval(f"background_field[y][x].{arg}")) + ')\n')
+                if pos is not None and hasattr(pos, 'image'):
+                    image = pos.image
+                    pos.image = None
+                    i = linear_items.index(pos)
+                    f.write(f'''image = linear_items[{i}].image
+linear_items[{i}].image = None
+copy = deepcopy(linear_items[{i}])
+self.background_field[{y}][{x}] = copy
+self.background_field[{y}][{x}].image = image
+linear_items[{i}].image = image
+''')
                 pos = foreground_field[y][x]
-                if pos is not None:
-                    args_spec = getfullargspec(pos.__init__)
-                    args = args_spec.args[1:]
-                    defaults = args_spec.defaults
-                    f.write(f'self.foreground_field[{y}][{x}] = {pos.__class__.__name__}(' +
-                            ', '.join(
-                                f'''{arg}={"'" if type(m := eval(f"foreground_field[y][x].{arg}")) == str else ""}'''
-                                f'''{m}{"'" if type(m) == str else ""}'''
-                                for i, arg in enumerate(args)
-                                if defaults[i] != eval(f"foreground_field[y][x].{arg}")) + ')\n')
-        f.write(f'self.gold_count = {gold_count}\n')
+                if pos is not None and hasattr(pos, 'image'):
+                    image = pos.image
+                    pos.image = None
+                    i = linear_items.index(pos)
+                    f.write(f'''image = linear_items[{i}].image
+linear_items[{i}].image = None
+copy = deepcopy(linear_items[{i}])
+self.foreground_field[{y}][{x}] = copy
+self.foreground_field[{y}][{x}].image = image
+linear_items[{i}].image = image
+''')

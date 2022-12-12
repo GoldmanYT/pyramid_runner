@@ -2,8 +2,8 @@ from entity import Entity
 
 
 class Enemy(Entity):
-    def __init__(self, x=0, y=0, speed=2618, n_steps=203500, field=None, texture=None):
-        super().__init__(x, y, speed, n_steps, field, texture)
+    def __init__(self, x=0, y=0, speed=2618, n_steps=203500, field=None, image=None):
+        super().__init__(x, y, speed, n_steps, field, image)
         self.speed = speed
         self.n_frames = {
             'standing': 41,
