@@ -1,13 +1,11 @@
 import pygame as pg
-from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit, AnimatedDecoration, Spawner, FakeBlock
+from blocks import Block, Ladder, Rope, Gold, Decoration, Entrance, Exit, AnimatedDecoration, Spawner, FakeBlock, Null
 from background import Background
-from enemy import Enemy
-from consts import A, BG_H
-from copy import deepcopy
+from enemy import Enemy1, Enemy2
 
 
 class Field:
-    def __init__(self, w=None, h=None, file_name=None):
+    def __init__(self, w=None, h=None, filename=None):
         if w is not None and h is not None and (w < 3 or h < 3):
             raise ValueError('Слишком маленькое поле')
 
@@ -25,19 +23,92 @@ class Field:
                        None for x in range(w)] for y in range(h)]
         self.background = None
         self.enemies = []
+        self.spawners = []
 
-        if file_name is not None:
-            with open(file_name) as f:
-                exec(f.read(), globals(), locals())
+        if filename is not None:
+            self.decode(filename)
 
-        for y, row in enumerate(self.field):
-            for x, pos in enumerate(row):
-                if isinstance(pos, Gold):
-                    self.gold_count += 1
-                elif isinstance(pos, Exit):
-                    self.exit = pos
-                elif isinstance(pos, Entrance):
-                    self.player_x, self.player_y = x, y
+    def decode(self, filename):
+        items = [Block, Ladder, Rope, Gold, Decoration, Entrance, Exit, AnimatedDecoration, Spawner, FakeBlock, Enemy1,
+                 Enemy2, Background, Null]
+        images = {}
+        with open('data/images.txt') as f:
+            for s in f.readlines():
+                item, *ims = s.split()
+                images[item] = [pg.image.load(img_name).convert_alpha() for img_name in ims]
+
+        with open(filename + '.txt') as f:
+            self.w, self.h = map(int, f.readline().split())
+            s = f.readline().strip()
+            if s:
+                self.background = Background(image=images.get('Background')[0], crop_index=int(s))
+
+        self.field = [[None] * self.w for _ in range(self.h)]
+        self.background_field = [[None] * self.w for _ in range(self.h)]
+        self.foreground_field = [[None] * self.w for _ in range(self.h)]
+
+        with open(filename + '.xxx', 'rb') as f:
+            i = 0
+            x, y = 0, 0
+            field_type = 0
+            field_types = {
+                0: self.field,
+                1: self.background_field,
+                2: self.foreground_field
+            }
+            a = list(map(int, f.read()))
+            while i < len(a):
+                index = [j.id for j in items].index(a[i])
+                item = items[index]
+                if item == Block:
+                    field_types.get(field_type)[y][x] = Block(crop_index=a[i + 1], diggable=a[i + 2])
+                    i += 3
+                elif item in (Enemy1, Enemy2):
+                    enemy = item(x=x, y=y)
+                    self.enemies.append(enemy)
+                    i += 1
+                elif item == Null:
+                    i += 1
+                else:
+                    field = field_types.get(field_type)
+                    field[y][x] = item(crop_index=a[i + 1])
+                    if item == Gold:
+                        self.gold_count += 1
+                    if item == Entrance:
+                        self.player_x, self.player_y = x, y
+                    if item == Exit:
+                        self.exit = self.field[y][x]
+                    if item == Spawner:
+                        field[y][x].set_pos(x, y)
+                        self.spawners.append(field[y][x])
+                    i += 2
+                x += 1
+                if x == self.w:
+                    x = 0
+                    y += 1
+                if y == self.h:
+                    x = 0
+                    y = 0
+                    field_type += 1
+        for row in self.field:
+            for pos in row:
+                if pos is not None:
+                    if isinstance(pos, Block) and pos.diggable:
+                        pos.image = images.get(pos.__class__.__name__)[1]
+                    else:
+                        pos.image = images.get(pos.__class__.__name__)[0]
+        for row in self.background_field:
+            for pos in row:
+                if pos is not None:
+                    pos.image = images.get(pos.__class__.__name__)[0]
+        for row in self.foreground_field:
+            for pos in row:
+                if pos is not None:
+                    pos.image = images.get(pos.__class__.__name__)[0]
+        for enemy in self.enemies:
+            enemy.image = images.get(enemy.__class__.__name__)[0]
+            enemy.field = self.field
+            enemy.entities = self.enemies
 
     def __getitem__(self, key):
         return self.field[key]
@@ -56,3 +127,6 @@ class Field:
 
     def get_exit(self):
         return self.exit
+
+    def get_spawners(self):
+        return self.spawners

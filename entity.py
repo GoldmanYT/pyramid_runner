@@ -4,18 +4,23 @@ from consts import A, N_ANIMS
 
 
 class Entity:
-    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, image=None):
+    def __init__(self, x, y, speed=5500, n_steps=203500, field=None, image=None, entities=None):
         if speed > n_steps:
             raise ValueError('Скорость не может быть больше количества шагов')
         self.image = image
         self.x, self.y = x, y
         self.ver_speed = speed
-        self.hor_speed = 23 * speed // 22
+        self.hor_speed = speed
         self.center_speed = 27 * speed // 22
         self.step_x, self.step_y, self.n_steps = 0, 0, n_steps
         self.field = field
         self.stop_time = 0
+        if entities is None:
+            self.entities = []
+        else:
+            self.entities = entities
 
+        self.alive = True
         self.moved = False
         self.sprite_direction = 'l'
         self.direction = None
@@ -66,6 +71,11 @@ class Entity:
     def is_standing(self):
         under = self.under()
         inside = self.inside()
+        x = self.pos()[0]
+        y = self.y + bool(self.step_y) - 1
+        for entity in self.entities:
+            if entity.pos() == (x, y) and self is not entity:
+                return True
         if isinstance(under, Block) and under.has_collision or \
                 isinstance(under, Ladder) or isinstance(inside, Ladder) or \
                 isinstance(inside, Rope) and not self.step_y:
@@ -108,8 +118,12 @@ class Entity:
         self.moved = False
 
     def update(self, directions=None):
+        x, y = self.pos()
+        pos = self.field[y][x]
+        if isinstance(pos, Block) and pos.has_collision:
+            self.alive = False
         if not self.is_standing():
-            self.move('down')
+            self.move('down', ver_speed=min(self.ver_speed, (self.step_y - 1) % self.n_steps + 1))
             self.direction = 'down'
             self.last_direction = 'down'
         elif directions is not None:
@@ -127,21 +141,21 @@ class Entity:
                 elif 'down' in directions:
                     direction = 'down'
             if direction is not None:
-                self.move(direction)
+                self.move(direction, ver_speed=min(self.ver_speed, (self.step_y - 1) % self.n_steps + 1))
             if not self.moved:
                 if 'left' in directions:
                     direction = 'left'
                 elif 'right' in directions:
                     direction = 'right'
                 if direction is not None:
-                    self.move(direction)
+                    self.move(direction, ver_speed=min(self.ver_speed, (self.step_y - 1) % self.n_steps + 1))
             if not self.moved:
                 if 'up' in directions:
                     direction = 'up'
                 elif 'down' in directions:
                     direction = 'down'
                 if direction is not None:
-                    self.move(direction)
+                    self.move(direction, ver_speed=min(self.ver_speed, (self.step_y - 1) % self.n_steps + 1))
             if not self.stop_time:
                 self.direction = direction
                 self.last_direction = direction

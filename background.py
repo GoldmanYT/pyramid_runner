@@ -2,6 +2,8 @@ from consts import BG_W, BG_H
 
 
 class Background:
+    id = 13
+
     def __init__(self, image=None, crop_index=0, level_w=None, level_h=None, w=None, h=None):
         self.image = image
         self.crop_index = crop_index

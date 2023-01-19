@@ -1,0 +1,14 @@
+Block data/block.png data/block_diggable.png
+Ladder data/ladder.png
+Rope data/rope.png
+Gold data/gold.png
+Decoration data/decoration.png
+Entrance data/entrance.png
+Exit data/exit.png
+AnimatedDecoration data/decoration_animated.png
+Spawner data/spawner.png
+FakeBlock data/fake_block.png
+Player data/player.png
+Enemy1 data/enemy1.png
+Enemy2 data/enemy2.png
+Background data/background.png

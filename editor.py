@@ -1,14 +1,14 @@
 import pygame as pg
-from blocks import Block, Ladder, Rope, Gold, Decoration, AnimatedDecoration, Entrance, Exit, Spawner, FakeBlock
+from blocks import Block, Ladder, Rope, Gold, Decoration, AnimatedDecoration, Entrance, Exit, Spawner, FakeBlock, Null
 from background import Background
-from enemy import Enemy
+from enemy import Enemy1, Enemy2
 from copy import deepcopy
 from consts import A, BG_H
 
 
 def draw(item, x, y, t=True, offset=False):
     global a, cam_x, cam_y, offset_x, offset_y, field
-    if item is not None and item.image is not None:
+    if item is not None and not isinstance(item, Null) and item.image is not None:
         item.draw(screen,
                   x * a - (cam_x + 2 if t else 0) + (offset_x if offset else 0),
                   y * a - (cam_y + 14 if t else 0) + (offset_y if offset else 0))
@@ -24,7 +24,7 @@ def place(container, item, selected_index, x, y):
 
 
 def delete(container, x, y):
-    container[y][x] = None
+    container[y][x] = Null()
 
 
 a = 50
@@ -57,8 +57,8 @@ for texture_name, block in zip(texture_names, blocks, strict=True):
 
 enemies_texture_names = ['data/enemy1.png', 'data/enemy2.png']
 enemies = []
-for texture_name in enemies_texture_names:
-    enemy = Enemy()
+for texture_name, enemy_type in zip(enemies_texture_names, [Enemy1, Enemy2]):
+    enemy = enemy_type()
     image = pg.image.load(texture_name).convert_alpha()
     copy = deepcopy(enemy)
     copy.image = image
@@ -105,9 +105,9 @@ if s == 'open':
 else:
     w, h = map(int, input('w h: ').split())
 
-    field = [[items[0][0] if 0 in (x, y) or x == w - 1 or y == h - 1 else None for x in range(w)] for y in range(h)]
-    background_field = [[None] * w for _ in range(h)]
-    foreground_field = [[None] * w for _ in range(h)]
+    field = [[items[0][0] if 0 in (x, y) or x == w - 1 or y == h - 1 else Null() for x in range(w)] for y in range(h)]
+    background_field = [[Null() for _ in range(w)] for _ in range(h)]
+    foreground_field = [[Null() for _ in range(w)] for _ in range(h)]
 
 FPS = 167
 
@@ -233,99 +233,41 @@ pg.quit()
 gold_count = 0
 file_name = input('Введите имя файла: ')
 if file_name:
-    with open('levels/' + file_name, 'w') as f:
-        f.write(f'self.w, self.h = {w}, {h}' + '\n')
-        f.write("""
-items = []
-linear_items = []
-texture_names = ['data/block.png', 'data/block_diggable.png', 'data/ladder.png', 'data/rope.png', 'data/gold.png',
-                 'data/decoration.png', 'data/entrance.png', 'data/exit.png', 'data/spawner.png',
-                 'data/fake_block.png']
-blocks = [Block(), Block(diggable=True), Ladder(), Rope(), Gold(), Decoration(), Entrance(), Exit(), Spawner(),
-          FakeBlock()]
+    with open('levels/' + file_name + '.txt', 'w') as f:
+        f.write(f'{w} {h}\n')
+        if background is not None:
+            f.write(f'{background}')
 
-for texture_name, block in zip(texture_names, blocks, strict=True):
-    temp = []
-    image = pg.image.load(texture_name).convert_alpha()
-    for i in range(image.get_size()[1] // A):
-        copy = deepcopy(block)
-        copy.image = image
-        copy.crop_index = i
-        temp.append(copy)
-    items.append(temp)
-    linear_items.extend(temp)
-
-enemies_texture_names = ['data/enemy1.png', 'data/enemy2.png']
-enemies = []
-for texture_name in enemies_texture_names:
-    enemy = Enemy()
-    image = pg.image.load(texture_name).convert_alpha()
-    copy = deepcopy(enemy)
-    copy.image = image
-    enemies.append(copy)
-items.append(enemies)
-linear_items.extend(enemies)
-
-anim_decs = [AnimatedDecoration(crop_index=0, n_frames=53, n_anims=2),
-             AnimatedDecoration(crop_index=1, n_frames=10, n_anims=8),
-             AnimatedDecoration(crop_index=2, n_frames=10, n_anims=4)]
-anim_decs_name = 'data/decoration_animated.png'
-image = pg.image.load(anim_decs_name)
-for i, anim_dec in enumerate(anim_decs):
-    anim_decs[i].image = image
-items.append(anim_decs)
-linear_items.extend(anim_decs)
-
-backgrounds = []
-background_texture_name = 'data/background.png'
-image = pg.image.load(background_texture_name).convert()
-for i in range(image.get_size()[1] // BG_H):
-    backgrounds.append(Background(image=image, crop_index=i))
-
-""")
-        f.write(f'''self.background = {None if background is None else
-        f"Background(image=backgrounds[{background}].image, crop_index={background})"}\n''')
-        f.write(f'self.field = [[None] * {w} for y in range({h})]\n')
-        f.write(f'self.background_field = [[None] * {w} for y in range({h})]\n')
-        f.write(f'self.foreground_field = [[None] * {w} for y in range({h})]\n')
-        for y in range(h):
-            for x in range(w):
-                pos = field[y][x]
-                if pos is not None and hasattr(pos, 'image'):
-                    image = pos.image
-                    pos.image = None
-                    i = linear_items.index(pos)
-                    if isinstance(pos, Enemy):
-                        f.write(f'self.enemies.append(Enemy({x}, {y}, image=linear_items[{i}].image, field=self.field))\n')
-                    else:
-                        f.write(f'''image = linear_items[{i}].image
-linear_items[{i}].image = None
-copy = deepcopy(linear_items[{i}])
-self.field[{y}][{x}] = copy
-self.field[{y}][{x}].image = image
-linear_items[{i}].image = image
-''')
-                pos = background_field[y][x]
-                if pos is not None and hasattr(pos, 'image'):
-                    image = pos.image
-                    pos.image = None
-                    i = linear_items.index(pos)
-                    f.write(f'''image = linear_items[{i}].image
-linear_items[{i}].image = None
-copy = deepcopy(linear_items[{i}])
-self.background_field[{y}][{x}] = copy
-self.background_field[{y}][{x}].image = image
-linear_items[{i}].image = image
-''')
-                pos = foreground_field[y][x]
-                if pos is not None and hasattr(pos, 'image'):
-                    image = pos.image
-                    pos.image = None
-                    i = linear_items.index(pos)
-                    f.write(f'''image = linear_items[{i}].image
-linear_items[{i}].image = None
-copy = deepcopy(linear_items[{i}])
-self.foreground_field[{y}][{x}] = copy
-self.foreground_field[{y}][{x}].image = image
-linear_items[{i}].image = image
-''')
+    file_bytes = []
+    for row in field:
+        for pos in row:
+            if isinstance(pos, Block):
+                file_bytes.extend([pos.id, pos.crop_index, int(pos.diggable)])
+            elif isinstance(pos, (Enemy1, Enemy2, Null)):
+                file_bytes.append(pos.id)
+            elif pos is None:
+                file_bytes.append(Null.id)
+            else:
+                file_bytes.extend([pos.id, pos.crop_index])
+    for row in background_field:
+        for pos in row:
+            if isinstance(pos, Block):
+                file_bytes.extend([pos.id, pos.crop_index, int(pos.diggable)])
+            elif isinstance(pos, (Enemy1, Enemy2, Null)):
+                file_bytes.append(pos.id)
+            elif pos is None:
+                file_bytes.append(Null.id)
+            else:
+                file_bytes.extend([pos.id, pos.crop_index])
+    for row in foreground_field:
+        for pos in row:
+            if isinstance(pos, Block):
+                file_bytes.extend([pos.id, pos.crop_index, int(pos.diggable)])
+            elif isinstance(pos, (Enemy1, Enemy2, Null)):
+                file_bytes.append(pos.id)
+            elif pos is None:
+                file_bytes.append(Null.id)
+            else:
+                file_bytes.extend([pos.id, pos.crop_index])
+    with open('levels/' + file_name + '.xxx', 'wb') as f:
+        f.write(bytes(file_bytes))
