@@ -42,7 +42,7 @@ class Player(Entity):
             self.stop_time = self.freeze_frames
             self.last_direction = direction
 
-    def update(self, directions=None, entities=None):
+    def update(self, directions=None):
         if not self.stop_time:
             self.above_digging_pos = None
             self.digging_block = None
@@ -53,6 +53,10 @@ class Player(Entity):
             for entity in self.entities:
                 if entity.pos() == self.above_digging_pos:
                     self.digging_block.restore()
+
+        for entity in self.entities:
+            if entity.pos() == self.pos():
+                self.alive = False
         inside = self.inside()
         if isinstance(inside, Gold):
             x, y = self.pos()

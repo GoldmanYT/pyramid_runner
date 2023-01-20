@@ -1,4 +1,5 @@
 from game import Game
+from consts import W, H
 
 
-game = Game(800, 600)
+game = Game(W, H)

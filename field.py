@@ -14,6 +14,7 @@ class Field:
         self.w, self.h = w, h
         self.player_x, self.player_y = 1, 1
         self.exit = None
+        self.exit_pos = None
         self.gold_count = 0
         self.winning_ladders_field = [[None] * w for _ in range(h)]
         self.background_field = [[None] * w for _ in range(h)]
@@ -78,6 +79,7 @@ class Field:
                         self.player_x, self.player_y = x, y
                     if item == Exit:
                         self.exit = self.field[y][x]
+                        self.exit_pos = x, y
                     if item == Spawner:
                         field[y][x].set_pos(x, y)
                         self.spawners.append(field[y][x])
@@ -127,6 +129,9 @@ class Field:
 
     def get_exit(self):
         return self.exit
+
+    def get_exit_pos(self):
+        return self.exit_pos
 
     def get_spawners(self):
         return self.spawners

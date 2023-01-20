@@ -1,5 +1,5 @@
 import pygame as pg
-from consts import A
+from consts import A, DOOR_CROP_H
 
 
 class TexturedBlock:
@@ -157,13 +157,27 @@ class Exit(TexturedBlock):
         super().__init__(image, crop_index)
         self.opened = False
         self.door_pos = 0
+        self.v = 1
 
     def draw(self, surface, x, y):
         if self.image is not None:
             surface.blit(self.image, (x, y),
                          (self.opened * A, 0, A, A))
             surface.blit(self.image, (x, y + self.door_pos),
-                         (self.opened * A, 64, A, A - self.door_pos))
+                         (self.opened * A, 64, A, A - self.door_pos - DOOR_CROP_H))
+
+    def draw_door(self, surface, x, y):
+        if self.image is not None:
+            surface.blit(self.image, (x, y + self.door_pos),
+                         (self.opened * A, 64, A, A - self.door_pos - DOOR_CROP_H))
+
+    def door_open(self):
+        if self.door_pos < 50:
+            self.door_pos += self.v
+
+    def door_close(self):
+        if self.door_pos > 0:
+            self.door_pos -= self.v
 
     def open(self):
         self.opened = True

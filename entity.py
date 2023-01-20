@@ -74,7 +74,7 @@ class Entity:
         x = self.pos()[0]
         y = self.y + bool(self.step_y) - 1
         for entity in self.entities:
-            if entity.pos() == (x, y) and self is not entity:
+            if entity.pos() == (x, y) and self is not entity and not self.step_y:
                 return True
         if isinstance(under, Block) and under.has_collision or \
                 isinstance(under, Ladder) or isinstance(inside, Ladder) or \
