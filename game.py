@@ -119,7 +119,7 @@ class Game:
                     if self.records_typing_index is not None:
                         if event.key == pg.K_BACKSPACE:
                             self.name = self.name[:-1]
-                        else:
+                        elif len(self.name) < 16:
                             self.name += event.unicode
 
             if self.menu_opened:
@@ -156,7 +156,7 @@ class Game:
             score = int(score)
             if score < self.score or score == 0 != self.score:
                 self.records_typing_index = i
-                self.records.insert(self.records_typing_index, ('', self.score))
+                self.records.insert(self.records_typing_index, ('', f'{self.score}'))
                 break
 
     def load_font(self):
@@ -394,10 +394,11 @@ class Game:
         if self.alpha == 255:
             self.alpha_direction = -1
             if self.tr == 0:
-                self.load_records_score()
+                self.save_score()
                 self.records_opened = True
             elif self.tr == 1:
                 self.menu_opened = True
+                self.score = 0
                 self.lives = 5
             elif self.tr == 2:
                 self.levels_opened = True
