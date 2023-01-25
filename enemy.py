@@ -8,11 +8,11 @@ class Enemy(Entity):
         self.speed = speed
         self.n_frames = {
             'standing': 41,
-            'going': 6,
-            'roping': 5,
-            'laddering': 4,
-            'falling': 5,
-            'digging': 10
+            'going': 13,
+            'roping': 11,
+            'laddering': 8,
+            'falling': 11,
+            'digging': 21
         }
         self.w, self.h = 0, 0
         self.freeze_time = 268

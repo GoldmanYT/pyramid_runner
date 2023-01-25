@@ -2,14 +2,17 @@ from sqlite3 import connect
 
 import pygame as pg
 
-from blocks import Ladder, Rope, FakeBlock, Exit
+from blocks import Ladder, Rope, FakeBlock, Exit, Gold
 from button import Button, dist
+from enemy import Enemy1
 from player import Player
 from field import Field
 from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BG_OFFSET_X, BG_OFFSET_Y, MENU_BTN_SIZE, START_BTN_POS, \
     RECORDS_BTN_POS, EXIT_BTN_POS, W, H, RECORDS_OK_BTN_POS, LEVELS_PLAY_BTN_POS, LEVELS_EXIT_BTN_POS, N_LEVELS, \
     LEVELS_W, LEVELS_POS, FRAME_W, LEVELS_MARGIN, START_N_FRAMES, GAME_OVER_FRAMES, RECORDS_COLOR, RECORDS_NUM_POS, \
-    RECORDS_HOR_MARGIN, RECORDS_VER_MARGIN, RECORDS_SCORE_POS
+    RECORDS_HOR_MARGIN, RECORDS_VER_MARGIN, RECORDS_SCORE_POS, END_TEXT_COLOR, END_TEXT1_POS, END_TEXT2_POS, \
+    END_TEXT3_POS, END_TEXT4_POS, END_TEXT5_POS, END_LINE_POS, END_GOLD_POS, END_ENEMY_POS, RECORDS_TYPING_COLOR, \
+    RECORDS_YOUR_SCORE_POS, RECORDS_TYPING_FRAMES
 from camera import Camera
 
 
@@ -24,6 +27,8 @@ class Game:
 
         # self.screen = pg.display.set_mode((w, h), pg.FULLSCREEN)
         self.screen = pg.display.set_mode((w, h))
+        pg.display.set_icon(pg.image.load('data/game.ico'))
+        pg.display.set_caption('Тайны пирамид')
         self.game_runs = False
         self.a = 50
         self.door_pos = None
@@ -40,6 +45,10 @@ class Game:
         self.exit = None
         self.exit_pos = None
         self.win = False
+        self.enemies_killed = 0
+        self.score = 0
+        self.lives = 5
+        self.previous_score = 0
 
         self.menu_opened = True
         self.bg = None
@@ -53,6 +62,9 @@ class Game:
         self.records_bg = None
         self.records_ok_btn = None
         self.records = None
+        self.records_typing_frame = 0
+        self.records_typing_index = None
+        self.name = ''
         self.load_records()
 
         self.levels_opened = False
@@ -73,6 +85,9 @@ class Game:
         self.end_opened = False
         self.end_bg = None
         self.end_ok_btn = None
+        self.end_gold = None
+        self.end_enemy = None
+        self.line = None
         self.load_end()
 
         self.game_over_opened = False
@@ -99,8 +114,13 @@ class Game:
                 elif event.type == pg.MOUSEBUTTONDOWN:
                     clicked = True
                 elif event.type == pg.KEYDOWN:
-                    if event.key == pg.K_ESCAPE:
+                    if event.key == pg.K_ESCAPE and self.game_runs:
                         self.paused = not self.paused
+                    if self.records_typing_index is not None:
+                        if event.key == pg.K_BACKSPACE:
+                            self.name = self.name[:-1]
+                        else:
+                            self.name += event.unicode
 
             if self.menu_opened:
                 self.draw_menu(clicked)
@@ -124,6 +144,21 @@ class Game:
 
             clock.tick(FPS)
 
+    def save_score(self, score=None):
+        self.load_records_score()
+        if score is not None:
+            self.records_typing_index = None
+            cur = self.connection.cursor()
+            cur.execute(f'''INSERT INTO records(name, score) VALUES ("{self.name}", {score})''')
+            self.connection.commit()
+            return
+        for i, (name, score) in enumerate(self.records):
+            score = int(score)
+            if score < self.score or score == 0 != self.score:
+                self.records_typing_index = i
+                self.records.insert(self.records_typing_index, ('', self.score))
+                break
+
     def load_font(self):
         self.font = pg.font.Font('data/font.ttf', 28)
 
@@ -134,9 +169,20 @@ class Game:
         self.screen.blit(self.game_over_screen, (0, 0))
         self.game_over_frame += 1
         if self.game_over_frame == GAME_OVER_FRAMES:
-            self.tr = 1
+            self.save_score()
+            if self.records_typing_index is None:
+                self.tr = 1
+            else:
+                self.tr = 0
             self.transition_runs = True
             self.game_over_frame = 0
+
+    def compute_score(self):
+        self.previous_score = self.score
+        gold_score = self.player.collected_gold * 100
+        enemy_score = self.enemies_killed * 100
+        new_score = gold_score + enemy_score
+        self.score += new_score
 
     def load_end(self):
         self.end_bg = pg.image.load('data/level_end.png').convert_alpha()
@@ -145,12 +191,41 @@ class Game:
         btn_bg = btn_im.subsurface((w // 2, 0, w // 2, h))
         btn_im = btn_im.subsurface((0, 0, w // 2, h))
         self.end_ok_btn = Button(btn_im, btn_bg, RECORDS_OK_BTN_POS)
+        self.line = pg.image.load('data/line.png').convert_alpha()
+        enemy_im = pg.image.load('data/enemy1.png').convert_alpha()
+        self.end_enemy = Enemy1(image=enemy_im)
+        gold_im = pg.image.load('data/gold.png').convert_alpha()
+        self.end_gold = Gold(gold_im)
 
     def draw_end(self, clicked):
         self.screen.blit(self.end_bg, (0, 0))
         x, y = pg.mouse.get_pos()
         self.end_ok_btn.draw(self.screen)
         pressed = self.end_ok_btn.update(x, y, clicked)
+        gold_score = self.player.collected_gold * 100
+        enemy_score = self.enemies_killed * 100
+        new_score = gold_score + enemy_score
+        s1 = f'УРОВЕНЬ  {self.selected_level + 1}'
+        s2 = f'{self.player.collected_gold}  x  100  =  {gold_score}'
+        s3 = f'{self.enemies_killed}  x  100  =  {enemy_score}'
+        s4 = f'ИТОГО:  {new_score}'
+        s5 = f'ВАШИ ОЧКИ:  {self.previous_score}  +  {new_score}  =  {self.previous_score + new_score}'
+        text1 = self.font.render(s1, True, END_TEXT_COLOR)
+        text2 = self.font.render(s2, True, END_TEXT_COLOR)
+        text3 = self.font.render(s3, True, END_TEXT_COLOR)
+        text4 = self.font.render(s4, True, END_TEXT_COLOR)
+        text5 = self.font.render(s5, True, END_TEXT_COLOR)
+        self.screen.blit(self.line, END_LINE_POS)
+        self.end_gold.draw(self.screen, *END_GOLD_POS)
+        self.end_enemy.draw(self.screen, *END_ENEMY_POS)
+        for text, coord in zip((text1, text2, text3, text4, text5),
+                               (END_TEXT1_POS, END_TEXT2_POS, END_TEXT3_POS, END_TEXT4_POS, END_TEXT5_POS)):
+            w, h = text.get_size()
+            x, y = coord
+            if text in (text2, text3):
+                self.screen.blit(text, (x, y - h))
+            else:
+                self.screen.blit(text, (x - w // 2, y - h))
         if pressed and self.tr is None:
             self.tr = 2
             self.transition_runs = True
@@ -163,7 +238,8 @@ class Game:
         self.start_frame += 1
         if self.start_frame == START_N_FRAMES:
             self.start_frame = 0
-            self.tr = 3
+            self.tr = 4
+            self.load_level(self.level_paths.get(self.selected_level + 1))
             self.transition_runs = True
 
     def load_levels(self):
@@ -192,12 +268,16 @@ class Game:
         self.levels_btn_play.draw(self.screen)
         pressed = self.levels_btn_play.update(x, y, clicked)
         if pressed and self.tr is None:
-            self.tr = 4
+            self.tr = 3
             self.transition_runs = True
         self.levels_btn_exit.draw(self.screen)
         pressed = self.levels_btn_exit.update(x, y, clicked)
         if pressed and self.tr is None:
-            self.tr = 1
+            self.save_score()
+            if self.records_typing_index is None:
+                self.tr = 1
+            else:
+                self.tr = 0
             self.transition_runs = True
         for i, level in enumerate(self.levels):
             level.draw(self.screen)
@@ -232,20 +312,39 @@ class Game:
         self.records_ok_btn.draw(self.screen)
         pressed = self.records_ok_btn.update(x, y, clicked)
         if pressed and self.tr is None:
+            if self.records_typing_index is not None:
+                self.save_score(self.score)
             self.tr = 1
             self.transition_runs = True
         for i in range(5):
-            text = self.font.render(f'{i + 1}.', True, RECORDS_COLOR)
+            if self.records_typing_index == i:
+                text = self.font.render(f'{i + 1}.', True, RECORDS_TYPING_COLOR)
+            else:
+                text = self.font.render(f'{i + 1}.', True, RECORDS_COLOR)
             w, h = text.get_size()
             x, y = RECORDS_NUM_POS
             self.screen.blit(text, (x - w, y - h + i * RECORDS_VER_MARGIN))
-            text = self.font.render(self.records[i][0], True, RECORDS_COLOR)
+            if self.records_typing_index == i:
+                s = ('_' if self.records_typing_frame // RECORDS_TYPING_FRAMES % 2 else '')
+                text = self.font.render(self.name + s, True, RECORDS_TYPING_COLOR)
+            else:
+                text = self.font.render(self.records[i][0], True, RECORDS_COLOR)
             w, h = text.get_size()
             self.screen.blit(text, (x + RECORDS_HOR_MARGIN, y - h + i * RECORDS_VER_MARGIN))
-            text = self.font.render(self.records[i][1], True, RECORDS_COLOR)
+            if self.records_typing_index == i:
+                text = self.font.render(f'{self.score}', True, RECORDS_TYPING_COLOR)
+            else:
+                text = self.font.render(self.records[i][1], True, RECORDS_COLOR)
             x, y = RECORDS_SCORE_POS
             w, h = text.get_size()
             self.screen.blit(text, (x - w, y - h + i * RECORDS_VER_MARGIN))
+            if self.records_typing_index == i:
+                text = self.font.render(f'ВАШИ  ОЧКИ:  {self.score}', True, RECORDS_TYPING_COLOR)
+                x, y = RECORDS_YOUR_SCORE_POS
+                w, h = text.get_size()
+                self.screen.blit(text, (x - w // 2, y - h))
+                self.records_typing_frame += 1
+                self.records_typing_frame %= 2 * RECORDS_TYPING_FRAMES
 
     def load_menu(self):
         self.bg = pg.image.load('data/menu_bg.png').convert_alpha()
@@ -283,7 +382,7 @@ class Game:
         if self.alpha == 0:
             if self.alpha_direction == 1:
                 self.menu_opened, self.start_opened, self.end_opened, self.levels_opened, \
-                self.records_opened, self.game_over_opened, self.game_runs = [False] * 7
+                    self.records_opened, self.game_over_opened, self.game_runs = [False] * 7
             else:
                 self.tr = None
                 self.transition_runs = False
@@ -299,6 +398,7 @@ class Game:
                 self.records_opened = True
             elif self.tr == 1:
                 self.menu_opened = True
+                self.lives = 5
             elif self.tr == 2:
                 self.levels_opened = True
             elif self.tr == 3:
@@ -307,6 +407,7 @@ class Game:
                 self.game_runs = True
                 self.load_level(self.level_paths.get(self.selected_level + 1))
             elif self.tr == 5:
+                self.compute_score()
                 self.end_opened = True
             elif self.tr == 6:
                 self.game_over_opened = True
@@ -329,6 +430,7 @@ class Game:
         self.exit = self.field.get_exit()
         self.exit.v = 1
         self.win = False
+        self.enemies_killed = 0
         self.player.alive = True
         self.exit_pos = self.field.get_exit_pos()
         self.spawners = self.field.get_spawners()
@@ -390,6 +492,7 @@ class Game:
             enemy.update(player=self.player)
         for enemy in deleted:
             self.enemies.remove(enemy)
+            self.enemies_killed += 1
             if self.spawners:
                 spawner = self.spawners[self.n_current_spawner]
                 self.n_current_spawner = (self.n_current_spawner + 1) % len(self.spawners)
@@ -478,7 +581,12 @@ class Game:
     def draw_player(self, camera_x, camera_y):
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
         if not self.player.alive:
-            self.tr = 6
+            if not self.lives:
+                self.save_score()
+                self.tr = 6
+            else:
+                self.lives -= 1
+                self.tr = 3
             self.transition_runs = True
             return
         self.player.draw(
