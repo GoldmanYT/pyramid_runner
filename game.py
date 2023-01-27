@@ -12,7 +12,7 @@ from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BG_OFFSET_X, BG_OFFSET
     LEVELS_W, LEVELS_POS, FRAME_W, LEVELS_MARGIN, START_N_FRAMES, GAME_OVER_FRAMES, RECORDS_COLOR, RECORDS_NUM_POS, \
     RECORDS_HOR_MARGIN, RECORDS_VER_MARGIN, RECORDS_SCORE_POS, END_TEXT_COLOR, END_TEXT1_POS, END_TEXT2_POS, \
     END_TEXT3_POS, END_TEXT4_POS, END_TEXT5_POS, END_LINE_POS, END_GOLD_POS, END_ENEMY_POS, RECORDS_TYPING_COLOR, \
-    RECORDS_YOUR_SCORE_POS, RECORDS_TYPING_FRAMES
+    RECORDS_YOUR_SCORE_POS, RECORDS_TYPING_FRAMES, START_LEVEL_POS, START_LIVES_POS, START_SCORE_POS, START_TEXT_COLOR
 from camera import Camera
 
 
@@ -147,6 +147,8 @@ class Game:
     def save_score(self, score=None):
         self.load_records_score()
         if score is not None:
+            if not self.name:
+                self.name = 'Нет имени'
             self.records_typing_index = None
             cur = self.connection.cursor()
             cur.execute(f'''INSERT INTO records(name, score) VALUES ("{self.name}", {score})''')
@@ -236,6 +238,15 @@ class Game:
     def draw_start(self):
         self.screen.blit(self.start_bg, (0, 0))
         self.start_frame += 1
+        d = {
+            START_LEVEL_POS: f'Уровень  {self.selected_level + 1}',
+            START_LIVES_POS: f'Жизни    {self.lives}',
+            START_SCORE_POS: f'Очки     {self.score}',
+        }
+        for x, y in (START_LEVEL_POS, START_LIVES_POS, START_SCORE_POS):
+            text = self.font.render(d.get((x, y)), True, START_TEXT_COLOR)
+            w, h = text.get_size()
+            self.screen.blit(text, (x - w // 2, y - h))
         if self.start_frame == START_N_FRAMES:
             self.start_frame = 0
             self.tr = 4
@@ -582,11 +593,11 @@ class Game:
     def draw_player(self, camera_x, camera_y):
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
         if not self.player.alive:
+            self.lives -= 1
             if not self.lives:
                 self.save_score()
                 self.tr = 6
             else:
-                self.lives -= 1
                 self.tr = 3
             self.transition_runs = True
             return
