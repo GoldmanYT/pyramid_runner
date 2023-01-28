@@ -116,6 +116,7 @@ class Entity:
                 self.frame = 0
                 self.n_anim = (self.n_anim + 1) % N_ANIMS
         self.moved = False
+        return anim
 
     def update(self, directions=None):
         x, y = self.pos()

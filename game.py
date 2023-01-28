@@ -1,3 +1,4 @@
+from random import choice
 from sqlite3 import connect
 
 import pygame as pg
@@ -19,6 +20,7 @@ from camera import Camera
 class Game:
     def __init__(self, w, h):
         self.w, self.h = w, h
+        pg.mixer.pre_init()
         pg.init()
 
         self.connection = connect('data/database.sqlite')
@@ -36,6 +38,7 @@ class Game:
         self.background_field = None
         self.foreground_field = None
         self.player = None
+        self.prev_state = None
         self.enemies = None
         self.spawners = None
         self.n_current_spawner = None
@@ -77,6 +80,8 @@ class Game:
         self.load_levels()
 
         self.paused = False
+        self.load_pause()
+
         self.start_opened = False
         self.start_bg = None
         self.start_frame = 0
@@ -103,6 +108,9 @@ class Game:
         self.font = None
         self.load_font()
 
+        self.load_sounds()
+        self.load_main_menu_music()
+
         clock = pg.time.Clock()
         run = True
 
@@ -119,8 +127,10 @@ class Game:
                     if self.records_typing_index is not None:
                         if event.key == pg.K_BACKSPACE:
                             self.name = self.name[:-1]
+                            self.typing.play()
                         elif len(self.name) < 16:
                             self.name += event.unicode
+                            self.typing.play()
 
             if self.menu_opened:
                 self.draw_menu(clicked)
@@ -143,6 +153,62 @@ class Game:
             pg.display.flip()
 
             clock.tick(FPS)
+
+    def load_sounds(self):
+        self.block_dig = pg.mixer.Sound('data/block_dig.ogg')
+        self.block_restore = pg.mixer.Sound('data/block_restore.wav')
+        self.click = pg.mixer.Sound('data/click.wav')
+        self.door_close = pg.mixer.Sound('data/door_closed.wav')
+        self.door_open = pg.mixer.Sound('data/door_opened.wav')
+        self.enemy_died = pg.mixer.Sound('data/enemy_died.wav')
+        self.exit_door_opened = pg.mixer.Sound('data/exit_door_opened.wav')
+        self.falling = pg.mixer.Sound('data/falling.ogg')
+        self.gold1 = pg.mixer.Sound('data/gold1.ogg')
+        self.gold2 = pg.mixer.Sound('data/gold2.ogg')
+        self.laddering = pg.mixer.Sound('data/laddering.wav')
+        self.level_completed = pg.mixer.Sound('data/level_completed.ogg')
+        self.level_select = pg.mixer.Sound('data/level_select.wav')
+        self.pause_click = pg.mixer.Sound('data/pause_click.ogg')
+        self.player_died = pg.mixer.Sound('data/player_died.wav')
+        self.roping = pg.mixer.Sound('data/roping.wav')
+        self.steps = pg.mixer.Sound('data/steps.wav')
+        self.typing = pg.mixer.Sound('data/typing.wav')
+
+    def load_level_music(self, level):
+        d = {
+            0: 'data/music1.ogg',
+            1: 'data/music2.ogg',
+            2: 'data/music3.mp3'
+        }
+        pg.mixer.music.load(d.get(level, d[0]))
+        pg.mixer.music.play(-1)
+
+    def load_main_menu_music(self):
+        pg.mixer.music.load('data/main_menu_music.mp3')
+        pg.mixer.music.play(-1)
+
+    def load_levels_music(self):
+        pg.mixer.music.load('data/levels_music.ogg')
+        pg.mixer.music.play(-1)
+
+    def load_game_over_music(self):
+        pg.mixer.music.load('data/game_over_music.mp3')
+        pg.mixer.music.play()
+
+    def load_end_music(self):
+        pg.mixer.music.load('data/end_music.ogg')
+        pg.mixer.music.play(-1)
+
+    def load_records_music(self):
+        pg.mixer.music.load('data/records_music.ogg')
+        pg.mixer.music.play(-1)
+
+    def load_start_music(self):
+        pg.mixer.music.load('data/start_music.ogg')
+        pg.mixer.music.play()
+
+    def load_pause(self):
+        pass
 
     def save_score(self, score=None):
         self.load_records_score()
@@ -231,6 +297,7 @@ class Game:
         if pressed and self.tr is None:
             self.tr = 2
             self.transition_runs = True
+            self.click.play()
 
     def load_start(self):
         self.start_bg = pg.image.load('data/level_start.png').convert_alpha()
@@ -281,6 +348,7 @@ class Game:
         if pressed and self.tr is None:
             self.tr = 3
             self.transition_runs = True
+            self.click.play()
         self.levels_btn_exit.draw(self.screen)
         pressed = self.levels_btn_exit.update(x, y, clicked)
         if pressed and self.tr is None:
@@ -290,11 +358,13 @@ class Game:
             else:
                 self.tr = 0
             self.transition_runs = True
+            self.click.play()
         for i, level in enumerate(self.levels):
             level.draw(self.screen)
             pressed = level.update(x, y, clicked)
             if pressed:
                 self.selected_level = i
+                self.level_select.play()
         x, y = LEVELS_POS
         self.screen.blit(self.levels_frame, (x + self.selected_level * LEVELS_MARGIN - FRAME_W, y - FRAME_W))
 
@@ -327,6 +397,7 @@ class Game:
                 self.save_score(self.score)
             self.tr = 1
             self.transition_runs = True
+            self.click.play()
         for i in range(5):
             if self.records_typing_index == i:
                 text = self.font.render(f'{i + 1}.', True, RECORDS_TYPING_COLOR)
@@ -379,6 +450,7 @@ class Game:
             pressed = button.update(x, y, clicked)
             if pressed:
                 pressed_button = button
+                self.click.play()
         if pressed_button == self.exit_btn:
             pg.quit()
             exit()
@@ -405,25 +477,53 @@ class Game:
         if self.alpha == 255:
             self.alpha_direction = -1
             if self.tr == 0:
-                self.save_score()
-                self.records_opened = True
+                self.open_records()
             elif self.tr == 1:
-                self.menu_opened = True
-                self.score = 0
-                self.lives = 5
+                self.open_menu()
             elif self.tr == 2:
-                self.levels_opened = True
+                self.open_levels()
             elif self.tr == 3:
-                self.start_opened = True
+                self.open_start()
             elif self.tr == 4:
-                self.game_runs = True
-                self.load_level(self.level_paths.get(self.selected_level + 1))
+                self.open_game()
             elif self.tr == 5:
-                self.compute_score()
-                self.end_opened = True
+                self.open_end()
             elif self.tr == 6:
-                self.game_over_opened = True
+                self.open_game_over()
         self.screen.blit(black_screen, (0, 0))
+
+    def open_records(self):
+        self.save_score()
+        self.records_opened = True
+        self.load_records_music()
+
+    def open_menu(self):
+        self.menu_opened = True
+        self.score = 0
+        self.lives = 5
+        self.load_main_menu_music()
+
+    def open_levels(self):
+        self.levels_opened = True
+        self.load_levels_music()
+
+    def open_start(self):
+        self.start_opened = True
+        self.load_start_music()
+
+    def open_game(self):
+        self.game_runs = True
+        self.load_level(self.level_paths.get(self.selected_level + 1))
+        self.load_level_music(self.selected_level)
+
+    def open_end(self):
+        self.compute_score()
+        self.end_opened = True
+        self.load_end_music()
+
+    def open_game_over(self):
+        self.game_over_opened = True
+        self.load_game_over_music()
 
     def load_level(self, file_name):
         self.field = Field(filename=file_name)
@@ -440,7 +540,6 @@ class Game:
         self.camera = Camera(self.a * self.field.w, self.a * self.field.h, self.w, self.h)
         self.gold_count = self.field.get_gold_count()
         self.exit = self.field.get_exit()
-        self.exit.v = 1
         self.win = False
         self.enemies_killed = 0
         self.player.alive = True
@@ -454,15 +553,24 @@ class Game:
             self.background.w = self.w
             self.background.h = self.h
 
+    def stop_moving_sounds(self):
+        self.falling.stop()
+        self.steps.stop()
+        self.laddering.stop()
+        self.roping.stop()
+
     def tick(self):
         keys = pg.key.get_pressed()
 
         if not (self.gold_count - self.player.collected_gold) and self.exit is not None and not self.exit.opened:
             self.exit.open()
+            self.exit_door_opened.play()
         if self.player.pos() == self.exit_pos and self.exit.opened:
-            self.exit.v = 0.1
+            self.exit.v = 0.2
             self.player.x, self.player.y = self.exit_pos
             self.player.step_x, self.player.step_y = 0, 0
+            if not self.win:
+                self.level_completed.play()
             self.win = True
             if self.exit.door_pos <= 0:
                 self.tr = 5
@@ -470,12 +578,15 @@ class Game:
 
         if self.win:
             self.exit.door_close()
+            self.stop_moving_sounds()
             return
 
         if keys[pg.K_z]:
-            self.player.dig('left')
+            if self.player.dig('left'):
+                self.block_dig.play()
         elif keys[pg.K_x]:
-            self.player.dig('right')
+            if self.player.dig('right'):
+                self.block_dig.play()
 
         directions = []
         if keys[pg.K_UP] and not keys[pg.K_DOWN]:
@@ -486,15 +597,39 @@ class Game:
             directions.append('left')
         if keys[pg.K_RIGHT] and not keys[pg.K_LEFT]:
             directions.append('right')
-        self.player.update(directions if directions else None)
+        gold_collected, restored = self.player.update(directions if directions else None)
+        if gold_collected:
+            choice((self.gold1, self.gold2)).play()
+        if restored:
+            self.block_restore.play()
+
+        state = self.player.check_state().split('_')[0]
+        state_sounds = {
+            'falling': self.falling,
+            'roping': self.roping,
+            'laddering': self.laddering,
+            'going': self.steps
+        }
+        if self.player.moved:
+            if self.prev_state != state:
+                if state_sounds.get(self.prev_state) is not None:
+                    state_sounds.get(self.prev_state).stop()
+                if state_sounds.get(state) is not None:
+                    state_sounds.get(state).play(-1)
+        elif state_sounds.get(self.prev_state) is not None:
+            state_sounds.get(self.prev_state).stop()
+        self.prev_state = state
+
         x, y = self.player.pos()
         if self.exit_pos is not None and self.exit.opened:
             x1, y1 = self.exit_pos
             r = dist(x, y, x1, y1)
             if r <= 2:
-                self.exit.door_open()
+                if self.exit.door_open():
+                    self.door_open.play()
             else:
-                self.exit.door_close()
+                if self.exit.door_close():
+                    self.door_close.play()
 
         deleted = []
         for enemy in self.enemies:
@@ -505,6 +640,7 @@ class Game:
         for enemy in deleted:
             self.enemies.remove(enemy)
             self.enemies_killed += 1
+            self.enemy_died.play()
             if self.spawners:
                 spawner = self.spawners[self.n_current_spawner]
                 self.n_current_spawner = (self.n_current_spawner + 1) % len(self.spawners)
@@ -594,6 +730,8 @@ class Game:
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
         if not self.player.alive:
             self.lives -= 1
+            self.player_died.play()
+            self.stop_moving_sounds()
             if not self.lives:
                 self.save_score()
                 self.tr = 6

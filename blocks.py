@@ -31,8 +31,11 @@ class Block(TexturedBlock):
         self.has_collision = False
 
     def restore(self):
-        self.has_collision = True
         self.time = 0
+        if not self.has_collision:
+            self.has_collision = True
+            return True
+        return False
 
     def tick(self):
         if self.has_collision:
@@ -157,7 +160,7 @@ class Exit(TexturedBlock):
         super().__init__(image, crop_index)
         self.opened = False
         self.door_pos = 0
-        self.v = 1
+        self.v = 2
 
     def draw(self, surface, x, y):
         if self.image is not None:
@@ -172,12 +175,20 @@ class Exit(TexturedBlock):
                          (self.opened * A, 64, A, A - self.door_pos - DOOR_CROP_H))
 
     def door_open(self):
+        t = False
+        if self.door_pos == 0:
+            t = True
         if self.door_pos < 50:
             self.door_pos += self.v
+        return t
 
     def door_close(self):
+        t = False
+        if self.door_pos >= 50:
+            t = True
         if self.door_pos > 0:
             self.door_pos -= self.v
+        return t
 
     def open(self):
         self.opened = True

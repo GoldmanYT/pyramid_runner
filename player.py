@@ -19,18 +19,17 @@ class Player(Entity):
             raise ValueError('Нет такого направления')
 
         if not self.is_standing():
-            return
+            return False
 
         k = {'left': -1, 'right': 1}
         x, y = self.pos()
         pos = self.field[y - 1][x + k.get(direction)]
         above_pos = self.field[y][x + k.get(direction)]
-        can_dig = True
         for entity in self.entities:
             if entity.pos() == (x + k.get(direction), y):
-                can_dig = False
+                return False
 
-        if isinstance(pos, Block) and pos.diggable and pos.has_collision and can_dig and \
+        if isinstance(pos, Block) and pos.diggable and pos.has_collision and \
                 (above_pos is None or isinstance(above_pos, Block) and not above_pos.has_collision or
                  isinstance(above_pos, Entrance) or isinstance(above_pos, Exit) or
                  isinstance(above_pos, Spawner) or isinstance(above_pos, Decoration) or
@@ -41,8 +40,11 @@ class Player(Entity):
             self.dug_blocks.append(pos)
             self.stop_time = self.freeze_frames
             self.last_direction = direction
+            return True
+        return False
 
     def update(self, directions=None):
+        restored = False
         if not self.stop_time:
             self.above_digging_pos = None
             self.digging_block = None
@@ -52,16 +54,19 @@ class Player(Entity):
             self.stop_time -= 1
             for entity in self.entities:
                 if entity.pos() == self.above_digging_pos:
-                    self.digging_block.restore()
+                    restored = self.digging_block.restore()
 
         for entity in self.entities:
             if entity.pos() == self.pos():
                 self.alive = False
+
+        gold_collected = False
         inside = self.inside()
         if isinstance(inside, Gold):
             x, y = self.pos()
             self.field[y][x] = None
             self.collected_gold += 1
+            gold_collected = True
 
         recovered_blocks = []
         for i, block in enumerate(self.dug_blocks):
@@ -71,3 +76,5 @@ class Player(Entity):
 
         for i in recovered_blocks[::-1]:
             self.dug_blocks.pop(i)
+
+        return gold_collected, restored
