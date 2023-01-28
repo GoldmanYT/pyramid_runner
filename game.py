@@ -17,6 +17,46 @@ from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BG_OFFSET_X, BG_OFFSET
 from camera import Camera
 
 
+def load_level_music(level):
+    d = {
+        0: 'data/music1.ogg',
+        1: 'data/music2.ogg',
+        2: 'data/music3.mp3'
+    }
+    pg.mixer.music.load(d.get(level, d[0]))
+    pg.mixer.music.play(-1)
+
+
+def load_main_menu_music():
+    pg.mixer.music.load('data/main_menu_music.mp3')
+    pg.mixer.music.play(-1)
+
+
+def load_levels_music():
+    pg.mixer.music.load('data/levels_music.ogg')
+    pg.mixer.music.play(-1)
+
+
+def load_game_over_music():
+    pg.mixer.music.load('data/game_over_music.mp3')
+    pg.mixer.music.play()
+
+
+def load_end_music():
+    pg.mixer.music.load('data/end_music.ogg')
+    pg.mixer.music.play(-1)
+
+
+def load_records_music():
+    pg.mixer.music.load('data/records_music.ogg')
+    pg.mixer.music.play(-1)
+
+
+def load_start_music():
+    pg.mixer.music.load('data/start_music.ogg')
+    pg.mixer.music.play()
+
+
 class Game:
     def __init__(self, w, h):
         self.w, self.h = w, h
@@ -28,7 +68,6 @@ class Game:
         self.level_paths = dict(cur.execute('''SELECT id, path FROM levels'''))
 
         self.full_screen = False
-        # self.screen = pg.display.set_mode((w, h), pg.FULLSCREEN)
         self.screen = pg.display.set_mode((w, h))
         pg.display.set_icon(pg.image.load('data/game.ico'))
         pg.display.set_caption('Тайны пирамид')
@@ -109,8 +148,26 @@ class Game:
         self.font = None
         self.load_font()
 
+        self.block_dig = None
+        self.block_restore = None
+        self.click = None
+        self.door_close = None
+        self.door_open = None
+        self.enemy_died = None
+        self.exit_door_opened = None
+        self.falling = None
+        self.gold1 = None
+        self.gold2 = None
+        self.laddering = None
+        self.level_completed = None
+        self.level_select = None
+        self.pause_click = None
+        self.player_died = None
+        self.roping = None
+        self.steps = None
+        self.typing = None
         self.load_sounds()
-        self.load_main_menu_music()
+        load_main_menu_music()
 
         clock = pg.time.Clock()
         run = True
@@ -180,39 +237,6 @@ class Game:
         self.roping = pg.mixer.Sound('data/roping.wav')
         self.steps = pg.mixer.Sound('data/steps.wav')
         self.typing = pg.mixer.Sound('data/typing.wav')
-
-    def load_level_music(self, level):
-        d = {
-            0: 'data/music1.ogg',
-            1: 'data/music2.ogg',
-            2: 'data/music3.mp3'
-        }
-        pg.mixer.music.load(d.get(level, d[0]))
-        pg.mixer.music.play(-1)
-
-    def load_main_menu_music(self):
-        pg.mixer.music.load('data/main_menu_music.mp3')
-        pg.mixer.music.play(-1)
-
-    def load_levels_music(self):
-        pg.mixer.music.load('data/levels_music.ogg')
-        pg.mixer.music.play(-1)
-
-    def load_game_over_music(self):
-        pg.mixer.music.load('data/game_over_music.mp3')
-        pg.mixer.music.play()
-
-    def load_end_music(self):
-        pg.mixer.music.load('data/end_music.ogg')
-        pg.mixer.music.play(-1)
-
-    def load_records_music(self):
-        pg.mixer.music.load('data/records_music.ogg')
-        pg.mixer.music.play(-1)
-
-    def load_start_music(self):
-        pg.mixer.music.load('data/start_music.ogg')
-        pg.mixer.music.play()
 
     def load_pause(self):
         pass
@@ -502,35 +526,35 @@ class Game:
     def open_records(self):
         self.save_score()
         self.records_opened = True
-        self.load_records_music()
+        load_records_music()
 
     def open_menu(self):
         self.menu_opened = True
         self.score = 0
         self.lives = 5
-        self.load_main_menu_music()
+        load_main_menu_music()
 
     def open_levels(self):
         self.levels_opened = True
-        self.load_levels_music()
+        load_levels_music()
 
     def open_start(self):
         self.start_opened = True
-        self.load_start_music()
+        load_start_music()
 
     def open_game(self):
         self.game_runs = True
         self.load_level(self.level_paths.get(self.selected_level + 1))
-        self.load_level_music(self.selected_level)
+        load_level_music(self.selected_level)
 
     def open_end(self):
         self.compute_score()
         self.end_opened = True
-        self.load_end_music()
+        load_end_music()
 
     def open_game_over(self):
         self.game_over_opened = True
-        self.load_game_over_music()
+        load_game_over_music()
 
     def load_level(self, file_name):
         self.field = Field(filename=file_name)
@@ -619,13 +643,16 @@ class Game:
         }
         if self.player.moved:
             if self.prev_state != state:
-                if state_sounds.get(self.prev_state) is not None:
-                    state_sounds.get(self.prev_state).stop()
-                if state_sounds.get(state) is not None:
-                    state_sounds.get(state).play(-1)
+                sound = state_sounds.get(self.prev_state)
+                if sound is not None:
+                    sound.stop()
+                sound = state_sounds.get(state)
+                if sound is not None:
+                    sound.play(-1)
+                self.prev_state = state
         elif state_sounds.get(self.prev_state) is not None:
             state_sounds.get(self.prev_state).stop()
-        self.prev_state = state
+            self.prev_state = None
 
         x, y = self.player.pos()
         if self.exit_pos is not None and self.exit.opened:

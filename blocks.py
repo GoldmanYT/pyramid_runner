@@ -1,4 +1,3 @@
-import pygame as pg
 from consts import A, DOOR_CROP_H
 
 
@@ -46,9 +45,6 @@ class Block(TexturedBlock):
             self.time = 0
             self.has_collision = True
 
-    def __repr__(self):
-        return '█'
-
 
 class Ladder(TexturedBlock):
     id = 1
@@ -64,9 +60,6 @@ class Ladder(TexturedBlock):
             surface.blit(self.image, (x, y),
                          (k.get((isinstance(above, Ladder), isinstance(under, Ladder))) * A, self.crop_index * A, A, A))
 
-    def __repr__(self):
-        return 'Н'
-
 
 class Rope(TexturedBlock):
     id = 2
@@ -81,9 +74,6 @@ class Rope(TexturedBlock):
         if self.image is not None:
             surface.blit(self.image, (x, y),
                          (k.get((isinstance(left, Rope), isinstance(right, Rope))) * A, self.crop_index * A, A, A))
-
-    def __repr__(self):
-        return '-'
 
 
 class Gold(TexturedBlock):
@@ -144,35 +134,18 @@ class Entrance(TexturedBlock):
     def __init__(self, image=None, crop_index=0):
         super().__init__(image, crop_index)
         self.door_pos = 0
+        self.v = 1
 
     def draw(self, surface, x, y):
         if self.image is not None:
             surface.blit(self.image, (x, y),
                          (0, 0, A, A))
-            surface.blit(self.image, (x, y + self.door_pos),
-                         (0, 64, A, A - self.door_pos))
-
-
-class Exit(TexturedBlock):
-    id = 7
-
-    def __init__(self, image=None, crop_index=0):
-        super().__init__(image, crop_index)
-        self.opened = False
-        self.door_pos = 0
-        self.v = 2
-
-    def draw(self, surface, x, y):
-        if self.image is not None:
-            surface.blit(self.image, (x, y),
-                         (self.opened * A, 0, A, A))
-            surface.blit(self.image, (x, y + self.door_pos),
-                         (self.opened * A, 64, A, A - self.door_pos - DOOR_CROP_H))
+            self.draw_door(surface, x, y)
 
     def draw_door(self, surface, x, y):
         if self.image is not None:
             surface.blit(self.image, (x, y + self.door_pos),
-                         (self.opened * A, 64, A, A - self.door_pos - DOOR_CROP_H))
+                         (0, A, A, A - self.door_pos - DOOR_CROP_H))
 
     def door_open(self):
         t = False
@@ -189,6 +162,25 @@ class Exit(TexturedBlock):
         if self.door_pos > 0:
             self.door_pos -= self.v
         return t
+
+
+class Exit(Entrance):
+    id = 7
+
+    def __init__(self, image=None, crop_index=0):
+        super().__init__(image, crop_index)
+        self.opened = False
+
+    def draw(self, surface, x, y):
+        if self.image is not None:
+            surface.blit(self.image, (x, y),
+                         (self.opened * A, 0, A, A))
+            self.draw_door(surface, x, y)
+
+    def draw_door(self, surface, x, y):
+        if self.image is not None:
+            surface.blit(self.image, (x, y + self.door_pos),
+                         (self.opened * A, A, A, A - self.door_pos - DOOR_CROP_H))
 
     def open(self):
         self.opened = True

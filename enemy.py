@@ -53,9 +53,9 @@ class Enemy(Entity):
     def get_directions(self, x, y):
         under = self.field[y - 1][x] if 0 <= y - 1 < self.h else Block()
         pos = self.field[y][x]
-        if isinstance(under, Ladder) or isinstance(pos, Ladder):
+        if isinstance(pos, Ladder):
             return [(0, -1), (0, 1), (-1, 0), (1, 0)]
-        if isinstance(under, Block) or isinstance(pos, Rope):
+        if isinstance(under, Block) or isinstance(pos, Rope) or isinstance(under, Ladder):
             return [(-1, 0), (1, 0), (0, -1)]
         return [(0, -1)]
 
