@@ -27,6 +27,7 @@ class Game:
         cur = self.connection.cursor()
         self.level_paths = dict(cur.execute('''SELECT id, path FROM levels'''))
 
+        self.full_screen = False
         # self.screen = pg.display.set_mode((w, h), pg.FULLSCREEN)
         self.screen = pg.display.set_mode((w, h))
         pg.display.set_icon(pg.image.load('data/game.ico'))
@@ -124,6 +125,12 @@ class Game:
                 elif event.type == pg.KEYDOWN:
                     if event.key == pg.K_ESCAPE and self.game_runs:
                         self.paused = not self.paused
+                    if event.key == pg.K_F11:
+                        self.full_screen = not self.full_screen
+                        if self.full_screen:
+                            self.screen = pg.display.set_mode((w, h), pg.FULLSCREEN)
+                        else:
+                            self.screen = pg.display.set_mode((w, h))
                     if self.records_typing_index is not None:
                         if event.key == pg.K_BACKSPACE:
                             self.name = self.name[:-1]
