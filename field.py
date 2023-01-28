@@ -13,6 +13,8 @@ class Field:
             w, h = 3, 3
         self.w, self.h = w, h
         self.player_x, self.player_y = 1, 1
+        self.entrance = None
+        self.entrance_pos = None
         self.exit = None
         self.exit_pos = None
         self.gold_count = 0
@@ -76,6 +78,8 @@ class Field:
                     if item == Gold:
                         self.gold_count += 1
                     if item == Entrance:
+                        self.entrance = self.field[y][x]
+                        self.entrance_pos = x, y
                         self.player_x, self.player_y = x, y
                     if item == Exit:
                         self.exit = self.field[y][x]
@@ -126,6 +130,12 @@ class Field:
 
     def get_gold_count(self):
         return self.gold_count
+
+    def get_entrance(self):
+        return self.entrance
+
+    def get_entrance_pos(self):
+        return self.entrance_pos
 
     def get_exit(self):
         return self.exit

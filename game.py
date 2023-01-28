@@ -3,7 +3,7 @@ from sqlite3 import connect
 
 import pygame as pg
 
-from blocks import Ladder, Rope, FakeBlock, Exit, Gold
+from blocks import Ladder, Rope, FakeBlock, Gold
 from button import Button, dist
 from enemy import Enemy1
 from player import Player
@@ -13,7 +13,10 @@ from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BG_OFFSET_X, BG_OFFSET
     LEVELS_W, LEVELS_POS, FRAME_W, LEVELS_MARGIN, START_N_FRAMES, GAME_OVER_FRAMES, RECORDS_COLOR, RECORDS_NUM_POS, \
     RECORDS_HOR_MARGIN, RECORDS_VER_MARGIN, RECORDS_SCORE_POS, END_TEXT_COLOR, END_TEXT1_POS, END_TEXT2_POS, \
     END_TEXT3_POS, END_TEXT4_POS, END_TEXT5_POS, END_LINE_POS, END_GOLD_POS, END_ENEMY_POS, RECORDS_TYPING_COLOR, \
-    RECORDS_YOUR_SCORE_POS, RECORDS_TYPING_FRAMES, START_LEVEL_POS, START_LIVES_POS, START_SCORE_POS, START_TEXT_COLOR
+    RECORDS_YOUR_SCORE_POS, RECORDS_TYPING_FRAMES, START_LEVEL_POS, START_LIVES_POS, START_SCORE_POS, \
+    START_TEXT_COLOR, DIED_N_FRAMES, PAUSE_BTN_CONTINUE_POS, PAUSE_BTN_H, PAUSE_BTN_RESTART_POS, \
+    PAUSE_BTN_EXIT_POS, PAUSE_N_FRAMES, PAUSE_BG_COLOR, PAUSE_BG_ALPHA, BLACK, PAUSE_STRIPE_H, \
+    EXIT_DOOR_OPENED_N_FRAMES, EXIT_DOOR_OPENED_POS
 from camera import Camera
 
 
@@ -67,13 +70,14 @@ class Game:
         cur = self.connection.cursor()
         self.level_paths = dict(cur.execute('''SELECT id, path FROM levels'''))
 
-        self.full_screen = False
-        self.screen = pg.display.set_mode((w, h))
+        self.full_screen = True
+        self.screen = pg.display.set_mode((w, h), pg.FULLSCREEN)
         pg.display.set_icon(pg.image.load('data/game.ico'))
         pg.display.set_caption('Тайны пирамид')
         self.game_runs = False
         self.a = 50
-        self.door_pos = None
+        self.entrance_door_pos = None
+        self.exit_door_pos = None
         self.field = None
         self.background_field = None
         self.foreground_field = None
@@ -85,9 +89,13 @@ class Game:
         self.background = None
         self.camera = None
         self.gold_count = None
+        self.entrance = None
+        self.entrance_pos = None
         self.exit = None
         self.exit_pos = None
         self.win = False
+        self.can_move = False
+        self.died_frames = 0
         self.enemies_killed = 0
         self.score = 0
         self.lives = 5
@@ -120,7 +128,16 @@ class Game:
         self.load_levels()
 
         self.paused = False
+        self.pause_continue_btn = None
+        self.pause_restart_btn = None
+        self.pause_exit_btn = None
+        self.pause_frame = 0
+        self.pause_anim_direction = 1
         self.load_pause()
+
+        self.exit_door_opened_frame = 0
+        self.exit_opened = None
+        self.load_exit_door_opened()
 
         self.start_opened = False
         self.start_bg = None
@@ -180,8 +197,13 @@ class Game:
                 elif event.type == pg.MOUSEBUTTONDOWN:
                     clicked = True
                 elif event.type == pg.KEYDOWN:
-                    if event.key == pg.K_ESCAPE and self.game_runs:
-                        self.paused = not self.paused
+                    if event.key == pg.K_ESCAPE and self.game_runs and self.pause_frame in (0, PAUSE_N_FRAMES):
+                        if self.paused:
+                            self.pause_anim_direction = -1
+                        else:
+                            self.paused = True
+                            self.stop_moving_sounds()
+                            self.prev_state = None
                     if event.key == pg.K_F11:
                         self.full_screen = not self.full_screen
                         if self.full_screen:
@@ -212,11 +234,21 @@ class Game:
                 if not self.paused:
                     self.tick()
                 self.draw()
+                if self.paused:
+                    self.draw_pause(clicked)
             if self.transition_runs:
                 self.transition()
             pg.display.flip()
 
             clock.tick(FPS)
+
+    def load_exit_door_opened(self):
+        self.exit_opened = pg.image.load('data/exit_door_opened.png').convert_alpha()
+
+    def draw_exit_door_opened(self):
+        if self.exit_door_opened_frame < EXIT_DOOR_OPENED_N_FRAMES:
+            self.exit_door_opened_frame += 1
+            self.screen.blit(self.exit_opened, EXIT_DOOR_OPENED_POS)
 
     def load_sounds(self):
         self.block_dig = pg.mixer.Sound('data/block_dig.ogg')
@@ -239,7 +271,56 @@ class Game:
         self.typing = pg.mixer.Sound('data/typing.wav')
 
     def load_pause(self):
-        pass
+        im = pg.image.load('data/pause.png').convert_alpha()
+        bg = pg.image.load('data/pause_bg.png').convert_alpha()
+        w, h = im.get_size()
+        cropped_im = im.subsurface(0, 0, w, PAUSE_BTN_H)
+        self.pause_continue_btn = Button(cropped_im, bg, PAUSE_BTN_CONTINUE_POS, 0, 17)
+        cropped_im = im.subsurface(0, PAUSE_BTN_H, w, PAUSE_BTN_H)
+        self.pause_restart_btn = Button(cropped_im, bg, PAUSE_BTN_RESTART_POS, 0, 17)
+        cropped_im = im.subsurface(0, 2 * PAUSE_BTN_H, w, PAUSE_BTN_H)
+        self.pause_exit_btn = Button(cropped_im, bg, PAUSE_BTN_EXIT_POS, 0, 17)
+
+    def draw_pause(self, clicked):
+        x, y = pg.mouse.get_pos()
+        buttons = pg.Surface((W, H), pg.SRCALPHA)
+        self.pause_continue_btn.draw(buttons)
+        self.pause_restart_btn.draw(buttons)
+        self.pause_exit_btn.draw(buttons)
+        buttons.set_alpha(255 * self.pause_frame // PAUSE_N_FRAMES)
+        bg = pg.Surface((W, H))
+        bg.fill(PAUSE_BG_COLOR)
+        bg.set_alpha(PAUSE_BG_ALPHA * self.pause_frame // PAUSE_N_FRAMES)
+        self.screen.blit(bg, (0, 0))
+        self.screen.blit(buttons, (0, 0))
+        pg.draw.rect(self.screen, BLACK, (0, 0, W, PAUSE_STRIPE_H * self.pause_frame // PAUSE_N_FRAMES))
+        pg.draw.rect(self.screen, BLACK,
+                     (0, H - PAUSE_STRIPE_H * self.pause_frame // PAUSE_N_FRAMES, W,
+                      PAUSE_STRIPE_H * self.pause_frame // PAUSE_N_FRAMES))
+        if self.pause_frame < PAUSE_N_FRAMES and self.pause_anim_direction > 0:
+            self.pause_frame += self.pause_anim_direction
+        elif self.pause_frame > 0 and self.pause_anim_direction < 0:
+            self.pause_frame += self.pause_anim_direction
+        elif self.pause_frame == 0 and self.pause_anim_direction < 0:
+            self.paused = False
+            self.pause_anim_direction = 1
+        if self.pause_continue_btn.update(x, y, clicked):
+            self.pause_anim_direction = -1
+            self.click.play()
+        if self.pause_restart_btn.update(x, y, clicked):
+            self.paused = False
+            self.pause_anim_direction = 1
+            self.pause_frame = 0
+            self.tr = 3
+            self.transition_runs = True
+            self.click.play()
+        if self.pause_exit_btn.update(x, y, clicked):
+            self.paused = False
+            self.pause_anim_direction = 1
+            self.pause_frame = 0
+            self.tr = 2
+            self.transition_runs = True
+            self.click.play()
 
     def save_score(self, score=None):
         self.load_records_score()
@@ -410,7 +491,7 @@ class Game:
     def load_records_score(self):
         cur = self.connection.cursor()
         result = cur.execute('''SELECT name, score FROM records''').fetchall()
-        result.sort(key=lambda x: -x[1])
+        result.sort(key=lambda value: -value[1])
         self.records = result[:5]
         if len(self.records) < 5:
             self.records.extend([('Нет имени', 0)] * (5 - len(self.records)))
@@ -570,12 +651,18 @@ class Game:
         self.background = self.field.get_background()
         self.camera = Camera(self.a * self.field.w, self.a * self.field.h, self.w, self.h)
         self.gold_count = self.field.get_gold_count()
+        self.entrance = self.field.get_entrance()
+        self.entrance_pos = self.field.get_entrance_pos()
         self.exit = self.field.get_exit()
-        self.win = False
-        self.enemies_killed = 0
-        self.player.alive = True
         self.exit_pos = self.field.get_exit_pos()
         self.spawners = self.field.get_spawners()
+        self.win = False
+        self.enemies_killed = 0
+        self.died_frames = 0
+        self.start_frame = 0
+        self.exit_door_opened_frame = 0
+        self.can_move = False
+        self.player.alive = True
         if self.spawners:
             self.n_current_spawner = 0
         if self.background is not None:
@@ -597,7 +684,7 @@ class Game:
             self.exit.open()
             self.exit_door_opened.play()
         if self.player.pos() == self.exit_pos and self.exit.opened:
-            self.exit.v = 0.2
+            self.exit.v = 0.15
             self.player.x, self.player.y = self.exit_pos
             self.player.step_x, self.player.step_y = 0, 0
             if not self.win:
@@ -611,6 +698,16 @@ class Game:
             self.exit.door_close()
             self.stop_moving_sounds()
             return
+
+        if not self.can_move:
+            if self.entrance.door_open():
+                self.door_open.play()
+            if self.entrance.door_opened():
+                self.can_move = True
+            return
+        else:
+            if self.entrance.door_close():
+                self.door_close.play()
 
         if keys[pg.K_z]:
             if self.player.dig('left'):
@@ -732,14 +829,17 @@ class Game:
                         if isinstance(self.player.inside(), FakeBlock) and isinstance(pos, FakeBlock) and \
                                 pos.player_inside:
                             self.draw_player(camera_x, camera_y)
-                        if isinstance(pos, Exit) and self.win:
-                            self.door_pos = (x * self.a + GLOBAL_OFFSET_X + camera_x,
-                                             (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + camera_y)
                         pos.draw(
                             self.screen,
                             x * self.a + GLOBAL_OFFSET_X + camera_x,
                             (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + camera_y
                         )
+        x, y = self.entrance_pos
+        self.entrance_door_pos = (x * self.a + GLOBAL_OFFSET_X + camera_x,
+                                  (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + camera_y)
+        x, y = self.exit_pos
+        self.exit_door_pos = (x * self.a + GLOBAL_OFFSET_X + camera_x,
+                              (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + camera_y)
         if not isinstance(self.player.inside(), FakeBlock):
             self.draw_player(camera_x, camera_y)
         for enemy in self.enemies:
@@ -747,7 +847,8 @@ class Game:
             enemy.draw(
                 self.screen,
                 x * self.a + step_x * self.a // self.player.n_steps + GLOBAL_OFFSET_X + camera_x,
-                (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y + camera_y
+                (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y + camera_y,
+                not self.paused and self.player.alive and not self.win
             )
 
         for y in range(self.field.h):
@@ -760,12 +861,19 @@ class Game:
                         (self.field.h - y - 1) * self.a + GLOBAL_OFFSET_Y + camera_y
                     )
 
+        if self.exit.opened:
+            self.draw_exit_door_opened()
+
     def draw_player(self, camera_x, camera_y):
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
         if not self.player.alive:
-            self.lives -= 1
-            self.player_died.play()
+            if self.died_frames == 0:
+                self.player_died.play()
             self.stop_moving_sounds()
+            if self.died_frames < DIED_N_FRAMES:
+                self.died_frames += 1
+                return
+            self.lives -= 1
             if not self.lives:
                 self.save_score()
                 self.tr = 6
@@ -775,9 +883,12 @@ class Game:
             return
         self.player.draw(
             self.screen, x * self.a + step_x * self.a // self.player.n_steps + GLOBAL_OFFSET_X + camera_x +
-            self.win * BG_OFFSET_X,
+            (self.win or not self.can_move) * BG_OFFSET_X,
             (self.field.h - y - 1) * self.a - step_y * self.a // self.player.n_steps + GLOBAL_OFFSET_Y + camera_y +
-            self.win * BG_OFFSET_Y
+            (self.win or not self.can_move) * BG_OFFSET_Y,
+            not self.paused and self.player.alive and not self.win
         )
         if self.win:
-            self.exit.draw_door(self.screen, *self.door_pos)
+            self.exit.draw_door(self.screen, *self.exit_door_pos)
+        if not self.can_move:
+            self.entrance.draw_door(self.screen, *self.entrance_door_pos)

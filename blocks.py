@@ -134,7 +134,7 @@ class Entrance(TexturedBlock):
     def __init__(self, image=None, crop_index=0):
         super().__init__(image, crop_index)
         self.door_pos = 0
-        self.v = 1
+        self.v = 0.4
 
     def draw(self, surface, x, y):
         if self.image is not None:
@@ -146,6 +146,9 @@ class Entrance(TexturedBlock):
         if self.image is not None:
             surface.blit(self.image, (x, y + self.door_pos),
                          (0, A, A, A - self.door_pos - DOOR_CROP_H))
+
+    def door_opened(self):
+        return self.door_pos >= 50
 
     def door_open(self):
         t = False

@@ -99,7 +99,8 @@ class Entity:
             return f'going_{self.sprite_direction}'
         return f'standing_{self.sprite_direction}'
 
-    def draw(self, surface, x, y):
+    def draw(self, surface, x, y, animate=True):
+        anim = None
         if self.image is not None:
             anim = self.check_state()
             if anim != self.anim:
@@ -110,7 +111,7 @@ class Entity:
             anim, direction = anim.split('_')
             n_frames = self.n_frames.get(anim)
             surface.blit(self.image, (x, y), (self.n_anim * A, crop_index * A, A, A))
-            if self.moved or anim == 'standing' or self.stop_time and anim != 'roping':
+            if (self.moved or anim == 'standing' or self.stop_time and anim != 'roping') and animate:
                 self.frame += 1
             if self.frame == n_frames:
                 self.frame = 0
@@ -119,6 +120,8 @@ class Entity:
         return anim
 
     def update(self, directions=None):
+        if not self.alive:
+            return
         x, y = self.pos()
         pos = self.field[y][x]
         if isinstance(pos, Block) and pos.has_collision:
