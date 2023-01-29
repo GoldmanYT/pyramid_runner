@@ -16,7 +16,7 @@ from consts import FPS, GLOBAL_OFFSET_X, GLOBAL_OFFSET_Y, BG_OFFSET_X, BG_OFFSET
     RECORDS_YOUR_SCORE_POS, RECORDS_TYPING_FRAMES, START_LEVEL_POS, START_LIVES_POS, START_SCORE_POS, \
     START_TEXT_COLOR, DIED_N_FRAMES, PAUSE_BTN_CONTINUE_POS, PAUSE_BTN_H, PAUSE_BTN_RESTART_POS, \
     PAUSE_BTN_EXIT_POS, PAUSE_N_FRAMES, PAUSE_BG_COLOR, PAUSE_BG_ALPHA, BLACK, PAUSE_STRIPE_H, \
-    EXIT_DOOR_OPENED_N_FRAMES, EXIT_DOOR_OPENED_POS
+    EXIT_DOOR_OPENED_N_FRAMES, EXIT_DOOR_OPENED_POS, WHITE, GOLD_COUNT_POS, GOLD_COUNT_TEXT_DY
 from camera import Camera
 
 
@@ -165,6 +165,9 @@ class Game:
         self.font = None
         self.load_font()
 
+        self.gold_count_im = None
+        self.load_gold_count()
+
         self.block_dig = None
         self.block_restore = None
         self.click = None
@@ -241,6 +244,9 @@ class Game:
             pg.display.flip()
 
             clock.tick(FPS)
+
+    def load_gold_count(self):
+        self.gold_count_im = pg.image.load('data/gold_count.png').convert_alpha()
 
     def load_exit_door_opened(self):
         self.exit_opened = pg.image.load('data/exit_door_opened.png').convert_alpha()
@@ -863,6 +869,17 @@ class Game:
 
         if self.exit.opened:
             self.draw_exit_door_opened()
+
+        self.draw_gold_count()
+
+    def draw_gold_count(self):
+        w, h = self.gold_count_im.get_size()
+        gold_count = pg.Surface((w, h), pg.SRCALPHA)
+        gold_count.blit(self.gold_count_im, (0, 0))
+        text = self.font.render(f'{self.gold_count - self.player.collected_gold}', True, WHITE)
+        text_w, text_h = text.get_size()
+        gold_count.blit(text, ((w - text_w) // 2, (h - text_h) // 2 + GOLD_COUNT_TEXT_DY))
+        self.screen.blit(gold_count, GOLD_COUNT_POS)
 
     def draw_player(self, camera_x, camera_y):
         x, step_x, y, step_y = self.player.x, self.player.step_x, self.player.y, self.player.step_y
